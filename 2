@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weighted Scatter Test</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#fff;padding:20px;font-family:'IBM Plex Sans',sans-serif;}
+#ws-wrap{max-width:860px;margin:0 auto;}
+.ws-title{font-size:15px;font-weight:600;margin-bottom:3px;}
+.ws-sub{font-size:11px;color:#6b6860;margin-bottom:16px;line-height:1.5;}
+.ws-chart-row{display:flex;align-items:stretch;}
+.ws-ylabel-wrap{width:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ws-ylabel{font-size:10px;color:#6b6860;font-family:'IBM Plex Mono',monospace;white-space:nowrap;transform:rotate(-90deg);}
+.ws-chart-col{flex:1;min-width:0;}
+canvas{display:block;width:100%;height:500px;}
+.ws-xlabel{text-align:center;font-size:10px;color:#6b6860;font-family:'IBM Plex Mono',monospace;margin-top:6px;}
+.ws-footer{font-size:10px;color:#9b9890;font-family:'IBM Plex Mono',monospace;margin-top:10px;border-top:0.5px solid #e0ddd4;padding-top:8px;line-height:1.6;}
+
+#ws-tt{
+  position:fixed;display:none;
+  background:#fff;border:0.5px solid #d0cdc4;
+  border-radius:6px;padding:12px 14px;
+  font-size:11px;pointer-events:none;z-index:9999;
+  min-width:260px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.12);
+}
+.tt-name{font-weight:600;font-size:13px;margin-bottom:1px;}
+.tt-era{font-size:10px;color:#6b6860;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;}
+.tt-section{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#9b9890;margin-bottom:5px;font-family:'IBM Plex Mono',monospace;}
+.tt-pitch-table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+.tt-pitch-table th{font-size:9px;font-weight:500;color:#9b9890;text-align:right;padding:0 6px 4px;font-family:'IBM Plex Mono',monospace;border-bottom:0.5px solid #e0ddd4;}
+.tt-pitch-table th:first-child{text-align:left;padding-left:0;}
+.tt-pitch-table td{font-size:11px;text-align:right;padding:3px 6px;font-family:'IBM Plex Mono',monospace;border-bottom:0.5px solid #f1efe8;}
+.tt-pitch-table td:first-child{text-align:left;padding-left:0;font-weight:500;}
+.tt-pitch-table tr:last-child td{border-bottom:none;}
+.tt-avg-row{display:flex;justify-content:space-between;padding-top:6px;margin-top:2px;border-top:0.5px solid #e0ddd4;font-family:'IBM Plex Mono',monospace;font-size:10px;}
+.tt-neg{color:#a32d2d;}
+</style>
+</head>
+<body>
+<div id="ws-wrap">
+  <div class="ws-title">Usage-Weighted Fastball Stuff+ vs Location+ · 2026</div>
+  <div class="ws-sub">Ten multi-fastball starters · averages weighted by pitch usage % · 100 = league average · hover any dot for individual pitch breakdown</div>
+  <div class="ws-chart-row">
+    <div class="ws-ylabel-wrap"><span class="ws-ylabel">Weighted Loc+</span></div>
+    <div class="ws-chart-col">
+      <canvas id="ws-canvas"></canvas>
+      <div class="ws-xlabel">Weighted Stuff+</div>
+    </div>
+  </div>
+  <div class="ws-footer">Averages weighted by pitch usage % — a pitch thrown 1% of the time contributes proportionally less than one thrown 35%. Most affected: Wrobleski (+47 pts Location+), Ginn (+6 pts Stuff+). Data via FanGraphs · RotoGraphs 2026</div>
+</div>
+
+<div id="ws-tt">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-era" id="tt-era"></div>
+  <div class="tt-section">Individual Fastball Grades</div>
+  <table class="tt-pitch-table">
+    <thead><tr><th></th><th>Stf+</th><th>Loc+</th><th>Usage%</th></tr></thead>
+    <tbody id="tt-body"></tbody>
+  </table>
+  <div class="tt-avg-row">
+    <span style="color:#6b6860;font-weight:500;">Weighted Avg</span>
+    <span style="font-weight:600;" id="tt-avg"></span>
+  </div>
+</div>
+
+<script>
+const P=[
+  {name:'Bryce Elder',      team:'ATL',era:2.01,xera:3.02,ws:84.4,wl:98.5,  pitches:[{n:'4-Seam',s:81, l:116,u:24.0,c:'#185FA5'},{n:'Sinker',s:89, l:87, u:24.6,c:'#3B6D11'},{n:'Cutter',s:82, l:87, u:11.9,c:'#854F0B'}]},
+  {name:'Ranger Suarez',    team:'BOS',era:2.40,xera:3.21,ws:91.2,wl:102.3, pitches:[{n:'4-Seam',s:84, l:100,u:17.8,c:'#185FA5'},{n:'Sinker',s:95, l:100,u:29.5,c:'#3B6D11'},{n:'Cutter',s:92, l:108,u:19.2,c:'#854F0B'}]},
+  {name:'Drew Rasmussen',   team:'TBR',era:3.19,xera:3.39,ws:104.8,wl:114.0,pitches:[{n:'4-Seam',s:109,l:113,u:28.0,c:'#185FA5'},{n:'Sinker',s:111,l:117,u:20.2,c:'#3B6D11'},{n:'Cutter',s:98, l:113,u:35.3,c:'#854F0B'}]},
+  {name:'J.T. Ginn',        team:'ATH',era:2.98,xera:3.64,ws:97.6,wl:103.8, pitches:[{n:'4-Seam',s:84, l:103,u:12.7,c:'#185FA5'},{n:'Sinker',s:112,l:107,u:36.5,c:'#3B6D11'},{n:'Cutter',s:78, l:98, u:17.9,c:'#854F0B'}]},
+  {name:'Justin Wrobleski', team:'LAD',era:2.49,xera:3.89,ws:89.4,wl:114.0, pitches:[{n:'4-Seam',s:89, l:117,u:51.2,c:'#185FA5'},{n:'Sinker',s:95, l:100,u:4.6, c:'#3B6D11'},{n:'Cutter',s:82, l:-17,u:0.7, c:'#854F0B'}]},
+  {name:'Michael Wacha',    team:'KCR',era:2.70,xera:3.94,ws:86.7,wl:106.5, pitches:[{n:'4-Seam',s:93, l:104,u:29.5,c:'#185FA5'},{n:'Sinker',s:87, l:109,u:14.2,c:'#3B6D11'},{n:'Cutter',s:75, l:109,u:16.4,c:'#854F0B'}]},
+  {name:'Aaron Civale',     team:'ATH',era:3.31,xera:4.36,ws:93.8,wl:115.3, pitches:[{n:'4-Seam',s:98, l:102,u:12.0,c:'#185FA5'},{n:'Sinker',s:82, l:124,u:19.7,c:'#3B6D11'},{n:'Cutter',s:99, l:115,u:34.7,c:'#854F0B'}]},
+  {name:'Foster Griffin',   team:'WSN',era:4.02,xera:4.40,ws:96.4,wl:105.4, pitches:[{n:'4-Seam',s:99, l:92, u:16.5,c:'#185FA5'},{n:'Sinker',s:91, l:93, u:11.4,c:'#3B6D11'},{n:'Cutter',s:97, l:117,u:31.1,c:'#854F0B'}]},
+  {name:'Eduardo Rodriguez',team:'ARI',era:2.53,xera:4.48,ws:91.9,wl:103.0, pitches:[{n:'4-Seam',s:91, l:105,u:37.5,c:'#185FA5'},{n:'Sinker',s:94, l:86, u:7.2, c:'#3B6D11'},{n:'Cutter',s:93, l:106,u:16.0,c:'#854F0B'}]},
+  {name:'Jameson Taillon',  team:'CHC',era:4.97,xera:5.10,ws:92.7,wl:101.3, pitches:[{n:'4-Seam',s:95, l:111,u:27.6,c:'#185FA5'},{n:'Sinker',s:99, l:92, u:9.5, c:'#3B6D11'},{n:'Cutter',s:87, l:93, u:21.9,c:'#854F0B'}]},
+];
+
+const OFFSETS={
+  'Bryce Elder':        {dx:-10, dy:0,   align:'right'},
+  'Ranger Suarez':      {dx:-10, dy:0,   align:'right'},
+  'Drew Rasmussen':     {dx:10,  dy:0,   align:'left'},
+  'J.T. Ginn':          {dx:10,  dy:0,   align:'left'},
+  'Justin Wrobleski':   {dx:-10, dy:0,   align:'right'},
+  'Michael Wacha':      {dx:-10, dy:0,   align:'right'},
+  'Aaron Civale':       {dx:0,   dy:-14, align:'center'},
+  'Foster Griffin':     {dx:0,   dy:16,  align:'center'},
+  'Eduardo Rodriguez':  {dx:0,   dy:-14, align:'center'},
+  'Jameson Taillon':    {dx:10,  dy:0,   align:'left'},
+};
+
+const XMIN=78,XMAX=108,YMIN=94,YMAX=119;
+const DOT_R=7;
+let hovIdx=-1;
+const canvas=document.getElementById('ws-canvas');
+const ctx=canvas.getContext('2d');
+
+function getSize(){
+  return {W:canvas.clientWidth,H:canvas.clientHeight};
+}
+const PAD={t:20,r:12,b:40,l:36};
+
+function toXY(wx,wy){
+  const{W,H}=getSize();
+  const x=PAD.l+(wx-XMIN)/(XMAX-XMIN)*(W-PAD.l-PAD.r);
+  const y=H-PAD.b-(wy-YMIN)/(YMAX-YMIN)*(H-PAD.t-PAD.b);
+  return{x,y};
+}
+
+function draw(){
+  const DPR=window.devicePixelRatio||1;
+  const{W,H}=getSize();
+  canvas.width=W*DPR;
+  canvas.height=H*DPR;
+  ctx.scale(DPR,DPR);
+  ctx.clearRect(0,0,W,H);
+
+  // Grid
+  ctx.strokeStyle='rgba(0,0,0,0.05)';
+  ctx.lineWidth=0.5;
+  for(let v=80;v<=XMAX;v+=5){
+    const{x}=toXY(v,YMIN);
+    ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,H-PAD.b);ctx.stroke();
+    ctx.fillStyle='#aaa8a0';ctx.font='9px IBM Plex Mono';ctx.textAlign='center';
+    ctx.fillText(v,x,H-PAD.b+12);
+  }
+  for(let v=95;v<=YMAX;v+=5){
+    const{y}=toXY(XMIN,v);
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(W-PAD.r,y);ctx.stroke();
+    ctx.fillStyle='#aaa8a0';ctx.font='9px IBM Plex Mono';ctx.textAlign='right';
+    ctx.fillText(v,PAD.l-4,y+3);
+  }
+
+  // Ref lines at 100
+  ctx.strokeStyle='rgba(0,0,0,0.22)';ctx.lineWidth=0.8;ctx.setLineDash([5,4]);
+  const{x:x100}=toXY(100,YMIN);
+  ctx.beginPath();ctx.moveTo(x100,PAD.t);ctx.lineTo(x100,H-PAD.b);ctx.stroke();
+  const{y:y100}=toXY(XMIN,100);
+  ctx.beginPath();ctx.moveTo(PAD.l,y100);ctx.lineTo(W-PAD.r,y100);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.font='9px IBM Plex Mono';
+  ctx.textAlign='left';ctx.fillText('league avg',PAD.l+3,y100-4);
+
+  // Dots
+  P.forEach((p,i)=>{
+    const{x,y}=toXY(p.ws,p.wl);
+    const hov=i===hovIdx;
+    ctx.beginPath();ctx.arc(x,y,hov?DOT_R+2:DOT_R,0,Math.PI*2);
+    ctx.fillStyle=hov?'#3a302a':'#9a8f87';ctx.fill();
+  });
+
+  // Labels
+  P.forEach((p,i)=>{
+    const{x,y}=toXY(p.ws,p.wl);
+    const off=OFFSETS[p.name]||{dx:0,dy:-14};
+    const hov=i===hovIdx;
+    const SHORT={'Bryce Elder':'Elder','Ranger Suarez':'Suarez','Drew Rasmussen':'Rasmussen','J.T. Ginn':'Ginn','Justin Wrobleski':'Wrobleski','Michael Wacha':'Wacha','Aaron Civale':'Civale','Foster Griffin':'Griffin','Eduardo Rodriguez':'Rodriguez','Jameson Taillon':'Taillon'};
+    const label=SHORT[p.name]||p.name;
+    ctx.font=(hov?'500 ':'')+'10px IBM Plex Sans';
+    ctx.fillStyle=hov?'#1a1916':'#5a504a';
+    ctx.textAlign=off.align||'center';
+    ctx.fillText(label,x+off.dx,y+off.dy+4);
+  });
+}
+
+function hitTest(mx,my){
+  for(let i=0;i<P.length;i++){
+    const{x,y}=toXY(P[i].ws,P[i].wl);
+    if(Math.sqrt((mx-x)**2+(my-y)**2)<=DOT_R+8) return i;
+  }
+  return -1;
+}
+
+function showTT(p,cx,cy){
+  document.getElementById('tt-name').textContent=p.name;
+  document.getElementById('tt-era').textContent=p.team+' · ERA: '+p.era.toFixed(2)+' · xERA: '+p.xera.toFixed(2);
+  document.getElementById('tt-body').innerHTML=p.pitches.map(pt=>`
+    <tr>
+      <td><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${pt.c};margin-right:4px;vertical-align:middle;"></span>${pt.n}</td>
+      <td>${pt.s}</td>
+      <td>${pt.l<0?`<span class="tt-neg">${pt.l}</span>`:pt.l}</td>
+      <td>${pt.u.toFixed(1)}%</td>
+    </tr>`).join('');
+  document.getElementById('tt-avg').textContent='Stuff+ '+p.ws.toFixed(1)+'  Loc+ '+p.wl.toFixed(1);
+  const tt=document.getElementById('ws-tt');
+  const ttW=280;
+  let left=cx+14,top=cy-20;
+  if(left+ttW>window.innerWidth-10) left=cx-ttW-14;
+  if(top+220>window.innerHeight) top=window.innerHeight-230;
+  tt.style.left=left+'px';tt.style.top=top+'px';tt.style.display='block';
+}
+
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  const mx=e.clientX-r.left,my=e.clientY-r.top;
+  const idx=hitTest(mx,my);
+  if(idx!==hovIdx){hovIdx=idx;draw();}
+  if(idx>=0){canvas.style.cursor='pointer';showTT(P[idx],e.clientX,e.clientY);}
+  else{canvas.style.cursor='default';document.getElementById('ws-tt').style.display='none';}
+});
+canvas.addEventListener('mouseleave',()=>{
+  hovIdx=-1;draw();document.getElementById('ws-tt').style.display='none';
+});
+
+window.addEventListener('resize',draw);
+draw();
+</script>
+</body>
+</html>
