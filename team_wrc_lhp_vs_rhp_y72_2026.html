@@ -1,176 +1,251 @@
-
-<h2 class="sr-only">Scatter plot of all 30 MLB teams showing wRC+ vs LHP on the x-axis and wRC+ vs RHP on the y-axis. Y-axis starts at 72 to include Colorado at 86.0 vs RHP without excess whitespace.</h2>
-
 <style>
-.filter-row{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;}
-.chip{font-size:11px;padding:3px 11px;border-radius:20px;border:0.5px solid var(--color-border-secondary);cursor:pointer;background:transparent;color:var(--color-text-secondary);transition:all 0.15s;font-family:inherit;}
-.chip.active{background:#185FA5;color:#fff;border-color:#185FA5;}
-.tt-box{position:absolute;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:8px;padding:10px 14px;font-size:12px;pointer-events:none;display:none;min-width:160px;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.08);}
-.tt-name{font-weight:500;font-size:14px;color:var(--color-text-primary);margin-bottom:5px;}
-.tt-row{display:flex;justify-content:space-between;gap:16px;color:var(--color-text-secondary);line-height:1.8;}
-.tt-val{color:var(--color-text-primary);font-weight:500;}
-.leg-row{display:flex;gap:18px;margin-top:1rem;flex-wrap:wrap;}
-.leg-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--color-text-secondary);}
+  *{box-sizing:border-box;}
+  .filter-row { display: flex; align-items: center; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+  .chip { font-size: 11px; padding: 3px 10px; border-radius: 20px; border: 0.5px solid #E0DDD4; cursor: pointer; background: transparent; color: #6B6860; transition: all 0.15s; font-family: inherit; }
+  .chip.active { background: #185FA5; color: #fff; border-color: #185FA5; }
+  .tooltip-box { position: fixed; background: #fff; border: 0.5px solid #E0DDD4; border-radius: 8px; padding: 10px 14px; font-size: 12px; pointer-events: none; display: none; min-width: 160px; max-width: 200px; z-index: 9999; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+  .tt-name { font-weight: 600; font-size: 13px; color: #1A1916; margin-bottom: 5px; }
+  .tt-row { display: flex; justify-content: space-between; gap: 12px; color: #6B6860; line-height: 1.8; font-size: 11px; }
+  .tt-val { color: #1A1916; font-weight: 500; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #6B6860; }
+  .chart-container { position: relative; width: 100%; height: 460px; }
+  @media (max-width: 600px) {
+    .chart-container { height: 320px; }
+    .chip { font-size: 10px; padding: 2px 8px; }
+    .legend-item { font-size: 10px; }
+  }
 </style>
 
+<h2 class="sr-only">Scatter plot of team wRC+ vs LHP compared to vs RHP for all 30 MLB teams</h2>
+
 <div class="filter-row">
-  <span style="font-size:12px;color:var(--color-text-secondary);">Highlight:</span>
-  <button class="chip active" onclick="setF3('all',this)">All teams</button>
-  <button class="chip" onclick="setF3('better-lhp',this)">Better vs LHP</button>
-  <button class="chip" onclick="setF3('better-rhp',this)">Better vs RHP</button>
-  <button class="chip" onclick="setF3('top-diff',this)">Biggest gap (±20)</button>
+  <span style="font-size:13px; color:var(--color-text-secondary);">Highlight:</span>
+  <button class="chip active" onclick="setFilter('all')">All teams</button>
+  <button class="chip" onclick="setFilter('better-lhp')">Better vs LHP</button>
+  <button class="chip" onclick="setFilter('better-rhp')">Better vs RHP</button>
+  <button class="chip" onclick="setFilter('top-diff')">Biggest gap (±15)</button>
 </div>
 
-<div style="position:relative;">
-  <div style="position:relative;width:100%;height:440px;">
-    <canvas id="wrcChart3" role="img" aria-label="Scatter plot of team wRC+ vs LHP versus wRC+ vs RHP for all 30 MLB teams in 2026. Y-axis starts at 72. NYY leads vs LHP. COL lowest vs RHP at 86.">wRC+ splits vs LHP and RHP for all 30 MLB teams, 2026.</canvas>
+<div style="position: relative;">
+  <div class="chart-container">
+    <canvas id="scatter" role="img" aria-label="Scatter plot comparing team wRC+ vs LHP (x-axis) against wRC+ vs RHP (y-axis). Teams above the diagonal line perform better vs RHP; teams below perform better vs LHP.">Team wRC+ splits vs LHP and RHP for all 30 MLB teams.</canvas>
   </div>
-  <div class="tt-box" id="tip3">
-    <div class="tt-name" id="tip3-name"></div>
-    <div class="tt-row"><span>vs LHP</span><span class="tt-val" id="tip3-lhp"></span></div>
-    <div class="tt-row"><span>vs RHP</span><span class="tt-val" id="tip3-rhp"></span></div>
-    <div class="tt-row"><span>Differential</span><span class="tt-val" id="tip3-diff"></span></div>
+  <div class="tooltip-box" id="tip">
+    <div class="tt-name" id="tip-name"></div>
+    <div class="tt-row"><span>vs LHP</span><span class="tt-val" id="tip-lhp"></span></div>
+    <div class="tt-row"><span>vs RHP</span><span class="tt-val" id="tip-rhp"></span></div>
+    <div class="tt-row"><span>Differential</span><span class="tt-val" id="tip-diff"></span></div>
   </div>
 </div>
 
-<div class="leg-row">
-  <div class="leg-item"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#185FA5" opacity="0.85"/></svg>Better vs LHP</div>
-  <div class="leg-item"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#993C1D" opacity="0.85"/></svg>Better vs RHP</div>
-  <div class="leg-item"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#888780" opacity="0.5"/></svg>Near even (±5)</div>
-  <div class="leg-item"><svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="#888780" stroke-width="1.5" stroke-dasharray="4,3"/></svg>Equal splits diagonal</div>
+<div style="display:flex; gap:20px; margin-top:1rem; flex-wrap:wrap;">
+  <div class="legend-item"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#185FA5" opacity="0.85"/></svg> Better vs LHP</div>
+  <div class="legend-item"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#993C1D" opacity="0.85"/></svg> Better vs RHP</div>
+  <div class="legend-item"><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="#888780" opacity="0.55"/></svg> Near even (±5)</div>
+  <div class="legend-item"><svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="#888780" stroke-width="1.5" stroke-dasharray="4,3"/></svg> League avg diagonal</div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+// Touch support for mobile
+document.getElementById('scatter').addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = this.getBoundingClientRect();
+  const mx = touch.clientX - rect.left;
+  const my = touch.clientY - rect.top;
+  // Simulate mousemove for tooltip
+  const mouseEvent = new MouseEvent('mousemove', {
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    bubbles: true
+  });
+  this.dispatchEvent(mouseEvent);
+}, {passive: false});
+
+document.getElementById('scatter').addEventListener('touchend', function(e) {
+  setTimeout(() => { document.getElementById('tip').style.display = 'none'; }, 2000);
+}, {passive: true});
+
+</script>
 <script>
-const raw3=[
-  {tm:'ARI',lhp:121.2,rhp:92.8},{tm:'ATH',lhp:87.0,rhp:108.3},
-  {tm:'ATL',lhp:106.3,rhp:116.1},{tm:'BAL',lhp:89.0,rhp:105.1},
-  {tm:'BOS',lhp:106.5,rhp:85.2},{tm:'CHC',lhp:115.5,rhp:106.6},
-  {tm:'CHW',lhp:118.5,rhp:98.5},{tm:'CIN',lhp:105.8,rhp:91.3},
-  {tm:'CLE',lhp:106.7,rhp:96.0},{tm:'COL',lhp:68.5,rhp:86.0},
-  {tm:'DET',lhp:97.8,rhp:93.6},{tm:'HOU',lhp:107.4,rhp:105.1},
-  {tm:'KCR',lhp:86.4,rhp:95.1},{tm:'LAA',lhp:103.6,rhp:90.8},
-  {tm:'LAD',lhp:118.9,rhp:119.6},{tm:'MIA',lhp:98.1,rhp:97.9},
-  {tm:'MIL',lhp:80.8,rhp:108.0},{tm:'MIN',lhp:103.8,rhp:102.4},
-  {tm:'NYM',lhp:87.4,rhp:85.1},{tm:'NYY',lhp:122.9,rhp:109.4},
-  {tm:'PHI',lhp:91.5,rhp:91.2},{tm:'PIT',lhp:86.0,rhp:110.3},
-  {tm:'SDP',lhp:76.1,rhp:94.4},{tm:'SEA',lhp:76.1,rhp:115.0},
-  {tm:'SFG',lhp:91.5,rhp:94.3},{tm:'STL',lhp:102.6,rhp:106.3},
-  {tm:'TBR',lhp:94.9,rhp:108.9},{tm:'TEX',lhp:74.5,rhp:105.6},
-  {tm:'TOR',lhp:84.9,rhp:95.0},{tm:'WSN',lhp:120.0,rhp:102.6},
+const raw = [
+  {tm:'ARI', lhp:121.2, rhp:92.8},
+  {tm:'ATH', lhp:87.0, rhp:108.3},
+  {tm:'ATL', lhp:106.3, rhp:116.1},
+  {tm:'BAL', lhp:89.0, rhp:105.1},
+  {tm:'BOS', lhp:106.5, rhp:85.2},
+  {tm:'CHC', lhp:115.5, rhp:106.6},
+  {tm:'CHW', lhp:118.5, rhp:98.5},
+  {tm:'CIN', lhp:105.8, rhp:91.3},
+  {tm:'CLE', lhp:106.7, rhp:96.0},
+  {tm:'COL', lhp:68.5, rhp:86.0},
+  {tm:'DET', lhp:97.8, rhp:93.6},
+  {tm:'HOU', lhp:107.4, rhp:105.1},
+  {tm:'KCR', lhp:86.4, rhp:95.1},
+  {tm:'LAA', lhp:103.6, rhp:90.8},
+  {tm:'LAD', lhp:118.9, rhp:119.6},
+  {tm:'MIA', lhp:98.1, rhp:97.9},
+  {tm:'MIL', lhp:80.8, rhp:108.0},
+  {tm:'MIN', lhp:103.8, rhp:102.4},
+  {tm:'NYM', lhp:87.4, rhp:85.1},
+  {tm:'NYY', lhp:122.9, rhp:109.4},
+  {tm:'PHI', lhp:91.5, rhp:91.2},
+  {tm:'PIT', lhp:86.0, rhp:110.3},
+  {tm:'SDP', lhp:76.1, rhp:94.4},
+  {tm:'SEA', lhp:76.1, rhp:115.0},
+  {tm:'SFG', lhp:91.5, rhp:94.3},
+  {tm:'STL', lhp:102.6, rhp:106.3},
+  {tm:'TBR', lhp:94.9, rhp:108.9},
+  {tm:'TEX', lhp:74.5, rhp:105.6},
+  {tm:'TOR', lhp:84.9, rhp:95.0},
+  {tm:'WSN', lhp:120.0, rhp:102.6},
 ];
-const data3=raw3.map(d=>({...d,diff:+(d.lhp-d.rhp).toFixed(1)}));
 
-function getCol3(diff,alpha){
-  if(Math.abs(diff)<=5) return `rgba(136,135,128,${alpha})`;
-  return diff>0?`rgba(24,95,165,${alpha})`:`rgba(153,60,29,${alpha})`;
+const data = raw.map(d => ({ ...d, diff: +(d.lhp - d.rhp).toFixed(1) }));
+
+function getColor(diff, alpha) {
+  if (Math.abs(diff) <= 5) return `rgba(136,135,128,${alpha})`;
+  return diff > 0 ? `rgba(24,95,165,${alpha})` : `rgba(153,60,29,${alpha})`;
 }
 
-let curF3='all';
-let chart3;
+let currentFilter = 'all';
+let chartInstance;
 
-function buildPts3(filter){
-  return data3.map(d=>{
-    const show=filter==='all'?true
-      :filter==='better-lhp'?d.diff>0
-      :filter==='better-rhp'?d.diff<0
-      :Math.abs(d.diff)>=20;
-    return{...d,show,
-      bg:show?getCol3(d.diff,0.85):getCol3(d.diff,0.1),
-      bc:show?getCol3(d.diff,1):getCol3(d.diff,0.12)};
+function buildDataset(filter) {
+  return data.map(d => {
+    const show = filter === 'all' ? true
+      : filter === 'better-lhp' ? d.diff > 0
+      : filter === 'better-rhp' ? d.diff < 0
+      : Math.abs(d.diff) >= 15;
+    return {
+      x: d.lhp,
+      y: d.rhp,
+      label: d.tm,
+      diff: d.diff,
+      active: show,
+      backgroundColor: show ? getColor(d.diff, 0.85) : getColor(d.diff, 0.12),
+      borderColor: show ? getColor(d.diff, 1) : getColor(d.diff, 0.15),
+    };
   });
 }
 
-const diagPlugin3={
-  id:'diag3',
-  afterDraw(chart){
-    const{ctx,scales:{x,y}}=chart;
-    ctx.save();ctx.setLineDash([5,4]);
-    ctx.strokeStyle='rgba(136,135,128,0.4)';ctx.lineWidth=1.2;
+const diagonalPlugin = {
+  id: 'diagonal',
+  afterDraw(chart) {
+    const {ctx, scales:{x,y}} = chart;
+    const allX = data.map(d=>d.lhp).concat(data.map(d=>d.rhp));
+    const mn = Math.min(...allX) - 5, mx = Math.max(...allX) + 5;
+    ctx.save();
+    ctx.setLineDash([5,4]);
+    ctx.strokeStyle = 'rgba(136,135,128,0.45)';
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(x.getPixelForValue(62),y.getPixelForValue(72));
-    ctx.lineTo(x.getPixelForValue(130),y.getPixelForValue(126));
-    ctx.stroke();ctx.restore();
+    ctx.moveTo(x.getPixelForValue(mn), y.getPixelForValue(mn));
+    ctx.lineTo(x.getPixelForValue(mx), y.getPixelForValue(mx));
+    ctx.stroke();
+    ctx.restore();
   }
 };
 
-const labelPlugin3={
-  id:'labels3',
-  afterDatasetsDraw(chart){
-    const{ctx,data:cd}=chart;
-    const pts=buildPts3(curF3);
-    cd.datasets[0].data.forEach((pt,i)=>{
-      const meta=chart.getDatasetMeta(0);
-      const el=meta.data[i];if(!el)return;
+const labelPlugin = {
+  id: 'teamLabels',
+  afterDatasetsDraw(chart) {
+    const {ctx, data: cd} = chart;
+    const ds = cd.datasets[0];
+    ds.data.forEach((pt, i) => {
+      const meta = chart.getDatasetMeta(0);
+      const el = meta.data[i];
+      if (!el) return;
+      const active = buildDataset(currentFilter)[i].active;
       ctx.save();
-      ctx.font=`${pts[i].show?500:400} 10px sans-serif`;
-      ctx.fillStyle=pts[i].show?getCol3(pts[i].diff,1):'rgba(136,135,128,0.25)';
-      ctx.textAlign='center';
-      ctx.fillText(pt.label,el.x,el.y-10);
+      ctx.font = `${active ? 500 : 400} 10px sans-serif`;
+      ctx.fillStyle = active ? (getColor(pt.diff, 1)) : 'rgba(136,135,128,0.3)';
+      ctx.textAlign = 'center';
+      ctx.fillText(pt.label, el.x, el.y - 9);
       ctx.restore();
     });
   }
 };
 
-function init3(){
-  const pts=buildPts3('all');
-  chart3=new Chart(document.getElementById('wrcChart3'),{
-    type:'scatter',
-    data:{datasets:[{
-      data:data3.map(d=>({x:d.lhp,y:d.rhp,label:d.tm,diff:d.diff})),
-      backgroundColor:pts.map(p=>p.bg),
-      borderColor:pts.map(p=>p.bc),
-      borderWidth:1.5,pointRadius:7,pointHoverRadius:9,
-    }]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      animation:{duration:250},
-      plugins:{
-        legend:{display:false},
-        tooltip:{enabled:false,external(ctx){
-          const tip=document.getElementById('tip3');
-          if(ctx.tooltip.opacity===0){tip.style.display='none';return;}
-          const pt=ctx.tooltip.dataPoints?.[0]?.raw;if(!pt)return;
-          document.getElementById('tip3-name').textContent=pt.label;
-          document.getElementById('tip3-lhp').textContent=pt.x.toFixed(1);
-          document.getElementById('tip3-rhp').textContent=pt.y.toFixed(1);
-          const diff=pt.diff;
-          const de=document.getElementById('tip3-diff');
-          de.textContent=(diff>0?'+':'')+diff.toFixed(1)+' ('+(diff>0?'LHP':'RHP')+')';
-          de.style.color=diff>5?'#185FA5':diff<-5?'#993C1D':'var(--color-text-primary)';
-          const canvas=document.getElementById('wrcChart3');
-          const cRect=canvas.parentElement.getBoundingClientRect();
-          tip.style.display='block';
-          let left=ctx.tooltip.caretX+14;
-          if(left+180>cRect.width)left=ctx.tooltip.caretX-190;
-          tip.style.left=left+'px';
-          tip.style.top=(ctx.tooltip.caretY-20)+'px';
-        }}
+function initChart() {
+  const pts = buildDataset('all');
+  const allX = data.map(d=>d.lhp), allY = data.map(d=>d.rhp);
+  const xMin = Math.min(...allX)-8, xMax = Math.max(...allX)+8;
+  const yMin = Math.min(...allY)-8, yMax = Math.max(...allY)+8;
+
+  chartInstance = new Chart(document.getElementById('scatter'), {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: pts.map(p=>({x:p.x, y:p.y, label:p.label, diff:p.diff})),
+        backgroundColor: pts.map(p=>p.backgroundColor),
+        borderColor: pts.map(p=>p.borderColor),
+        borderWidth: 1.5,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 300 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: false,
+          external(ctx) {
+            const tip = document.getElementById('tip');
+            if (ctx.tooltip.opacity === 0) { tip.style.display='none'; return; }
+            const pt = ctx.tooltip.dataPoints?.[0]?.raw;
+            if (!pt) return;
+            document.getElementById('tip-name').textContent = pt.label;
+            document.getElementById('tip-lhp').textContent = pt.x.toFixed(1);
+            document.getElementById('tip-rhp').textContent = pt.y.toFixed(1);
+            const diff = pt.diff;
+            const diffEl = document.getElementById('tip-diff');
+            diffEl.textContent = (diff > 0 ? '+' : '') + diff.toFixed(1) + ' (LHP)';
+            diffEl.style.color = diff > 5 ? '#185FA5' : diff < -5 ? '#993C1D' : 'var(--color-text-primary)';
+            const pos = ctx.tooltip;
+            const canvas = document.getElementById('scatter');
+            const rect = canvas.getBoundingClientRect();
+            tip.style.display = 'block';
+            const ttW = 200;
+            let left = rect.left + pos.caretX + 14;
+            let top = rect.top + pos.caretY - 20 + window.scrollY;
+            if (left + ttW > window.innerWidth - 10) left = rect.left + pos.caretX - ttW - 14;
+            if (top + 120 > window.innerHeight + window.scrollY) top = rect.top + pos.caretY - 130 + window.scrollY;
+            tip.style.left = left + 'px';
+            tip.style.top = top + 'px';
+          }
+        }
       },
-      scales:{
-        x:{min:62,max:130,
-          title:{display:true,text:'wRC+ vs LHP',color:'var(--color-text-secondary)',font:{size:12}},
-          grid:{color:'rgba(136,135,128,0.12)'},
-          ticks:{color:'var(--color-text-secondary)',font:{size:11}}},
-        y:{min:72,max:126,
-          title:{display:true,text:'wRC+ vs RHP',color:'var(--color-text-secondary)',font:{size:12}},
-          grid:{color:'rgba(136,135,128,0.12)'},
-          ticks:{color:'var(--color-text-secondary)',font:{size:11}}},
+      scales: {
+        x: {
+          min: xMin, max: xMax,
+          title: { display:true, text:'wRC+ vs LHP', color:'var(--color-text-secondary)', font:{size:12} },
+          grid: { color:'rgba(136,135,128,0.15)' },
+          ticks: { color:'var(--color-text-secondary)', font:{size:11} }
+        },
+        y: {
+          min: yMin, max: yMax,
+          title: { display:true, text:'wRC+ vs RHP', color:'var(--color-text-secondary)', font:{size:12} },
+          grid: { color:'rgba(136,135,128,0.15)' },
+          ticks: { color:'var(--color-text-secondary)', font:{size:11} }
+        }
       }
     },
-    plugins:[diagPlugin3,labelPlugin3]
+    plugins: [diagonalPlugin, labelPlugin]
   });
 }
 
-window.setF3=function(f,el){
-  curF3=f;
-  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-  const pts=buildPts3(f);
-  chart3.data.datasets[0].backgroundColor=pts.map(p=>p.bg);
-  chart3.data.datasets[0].borderColor=pts.map(p=>p.bc);
-  chart3.update();
-};
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  const pts = buildDataset(f);
+  chartInstance.data.datasets[0].backgroundColor = pts.map(p=>p.backgroundColor);
+  chartInstance.data.datasets[0].borderColor = pts.map(p=>p.borderColor);
+  chartInstance.update();
+}
 
-init3();
+initChart();
 </script>
