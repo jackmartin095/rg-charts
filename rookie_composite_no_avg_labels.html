@@ -1,0 +1,196 @@
+
+<style>
+.chart-title { font-size: 15px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 4px 0; padding-top: 1rem; }
+.chart-sub { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 8px 0; }
+#wrap { position: relative; width: 100%; }
+#scatter { display: block; width: 100% !important; }
+#tip {
+  display: none;
+  position: absolute;
+  background: var(--color-bg-primary, #fff);
+  border: 1px solid rgba(128,128,128,0.25);
+  border-radius: 7px;
+  padding: 10px 13px;
+  font-size: 12px;
+  font-family: system-ui, sans-serif;
+  pointer-events: none;
+  z-index: 99;
+  min-width: 210px;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.13);
+  color: var(--color-text-primary, #222);
+}
+.tip-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.tip-meta { display: flex; gap: 14px; margin-bottom: 7px; }
+.tip-meta-item label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
+.tip-val { font-size: 14px; font-weight: 700; }
+.tip-divider { border: none; border-top: 1px solid rgba(128,128,128,0.15); margin: 6px 0; }
+.tip-section-label { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; opacity: .55; margin-bottom: 4px; }
+.tip-rows { display: flex; flex-direction: column; gap: 3px; }
+.tip-row { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+.tip-row-label { width: 105px; opacity: .75; white-space: nowrap; }
+.tip-row-val { width: 36px; font-size: 10px; opacity: .55; text-align: right; }
+.tip-track { width: 60px; height: 5px; background: rgba(128,128,128,0.15); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+.tip-fill { height: 100%; border-radius: 3px; }
+.tip-z { font-size: 10px; font-weight: 600; min-width: 36px; }
+</style>
+
+<p class="chart-title">Composite profile score vs. expected ERA</p>
+<p class="chart-sub">K-BB% (25%) · Stuff+ (25%) · CSW% (20%) · Z-Contact% (20%) · HardHit% (10%) · bubble = IP · hover for breakdown</p>
+
+<div id="wrap">
+  <canvas id="scatter" height="440"></canvas>
+  <div id="tip"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const pitchers = [
+  {name:"Logan Henderson", team:"MIL", ip:23.0, xERA:2.875, comp:1.4811, z_kbb:2.0241, z_stuff:0.973, z_csw:0.3904, z_zcon:2.5274, z_hh:1.4831, kbb:26.7, stuff:107.2, csw:27.4, zcon:77.5, hh:29.6},
+  {name:"Payton Tolle", team:"BOS", ip:41.1, xERA:2.205, comp:1.1398, z_kbb:1.3371, z_stuff:1.8683, z_csw:0.2413, z_zcon:1.4518, z_hh:-0.0018, kbb:21.7, stuff:113.8, csw:27.2, zcon:81.5, hh:36.9},
+  {name:"Trey Yesavage", team:"TOR", ip:37.0, xERA:2.495, comp:0.8342, z_kbb:0.3649, z_stuff:1.4827, z_csw:0.0023, z_zcon:0.9779, z_hh:1.7629, kbb:14.8, stuff:111.0, csw:26.8, zcon:83.3, hh:28.3},
+  {name:"Nolan McLean", team:"NYM", ip:66.1, xERA:3.345, comp:0.7377, z_kbb:0.9835, z_stuff:0.8941, z_csw:1.4302, z_zcon:-0.064, z_hh:-0.0493, kbb:19.2, stuff:106.6, csw:29.0, zcon:87.3, hh:37.1},
+  {name:"Trevor McDonald", team:"SFG", ip:34.0, xERA:3.801, comp:0.4802, z_kbb:0.4363, z_stuff:0.1251, z_csw:1.9925, z_zcon:0.1696, z_hh:-0.926, kbb:15.3, stuff:100.9, csw:29.9, zcon:86.4, hh:41.4},
+  {name:"Parker Messick", team:"CLE", ip:69.1, xERA:3.239, comp:0.2898, z_kbb:1.0229, z_stuff:-0.5785, z_csw:-0.1657, z_zcon:0.7739, z_hh:0.5711, kbb:19.5, stuff:95.8, csw:26.5, zcon:84.1, hh:34.1},
+  {name:"Brandon Sproat", team:"MIL", ip:41.2, xERA:4.939, comp:0.288, z_kbb:0.115, z_stuff:-0.0209, z_csw:0.7885, z_zcon:0.9779, z_hh:-0.888, kbb:13.0, stuff:99.9, csw:28.0, zcon:83.3, hh:41.2},
+  {name:"Foster Griffin", team:"WSN", ip:67.0, xERA:4.46, comp:0.1992, z_kbb:0.4972, z_stuff:-0.3055, z_csw:1.1042, z_zcon:-0.2576, z_hh:-0.1802, kbb:15.7, stuff:97.8, csw:28.5, zcon:88.0, hh:37.8},
+  {name:"Gage Jump", team:"ATH", ip:12.0, xERA:3.104, comp:0.0772, z_kbb:0.5825, z_stuff:0.5166, z_csw:-0.486, z_zcon:-1.3519, z_hh:1.6995, kbb:16.3, stuff:103.8, csw:26.0, zcon:92.2, hh:28.6},
+  {name:"Connor Prielipp", team:"MIN", ip:39.1, xERA:3.784, comp:0.0366, z_kbb:0.3211, z_stuff:0.4062, z_csw:-0.0787, z_zcon:-0.6755, z_hh:0.0567, kbb:14.5, stuff:103.0, csw:26.7, zcon:89.6, hh:36.6},
+  {name:"Walbert Ureña", team:"LAA", ip:42.2, xERA:3.102, comp:0.0103, z_kbb:-0.3695, z_stuff:-0.2321, z_csw:-0.223, z_zcon:0.6049, z_hh:0.8434, kbb:9.5, stuff:98.3, csw:26.4, zcon:84.7, hh:32.8},
+  {name:"Connelly Early", team:"BOS", ip:66.1, xERA:4.618, comp:-0.0456, z_kbb:0.3196, z_stuff:0.2208, z_csw:0.3306, z_zcon:-0.5528, z_hh:-1.3624, kbb:14.4, stuff:101.7, csw:27.3, zcon:89.1, hh:43.5},
+  {name:"Bubba Chandler", team:"PIT", ip:57.0, xERA:4.453, comp:-0.185, z_kbb:-0.7785, z_stuff:0.62, z_csw:-1.2003, z_zcon:0.2961, z_hh:0.3543, kbb:6.6, stuff:104.6, csw:24.9, zcon:85.9, hh:35.2},
+  {name:"Coleman Crow", team:"MIL", ip:14.1, xERA:5.025, comp:-0.3466, z_kbb:-0.4917, z_stuff:0.4043, z_csw:-0.9709, z_zcon:-0.8675, z_hh:0.4297, kbb:8.6, stuff:103.0, csw:25.2, zcon:90.3, hh:34.8},
+  {name:"Noah Schultz", team:"CHW", ip:38.2, xERA:5.372, comp:-0.4113, z_kbb:-0.7807, z_stuff:-0.3525, z_csw:0.327, z_zcon:-0.7988, z_hh:-0.3369, kbb:6.5, stuff:97.4, csw:27.3, zcon:90.1, hh:38.5},
+  {name:"Andrew Painter", team:"PHI", ip:48.1, xERA:5.091, comp:-0.5607, z_kbb:-0.4086, z_stuff:0.0072, z_csw:-1.6155, z_zcon:-0.5683, z_hh:-0.2356, kbb:9.2, stuff:100.1, csw:24.2, zcon:89.2, hh:38.0},
+  {name:"Tatsuya Imai", team:"HOU", ip:29.1, xERA:5.16, comp:-0.7726, z_kbb:-0.8084, z_stuff:-1.7593, z_csw:0.2387, z_zcon:0.2444, z_hh:-2.2724, kbb:6.3, stuff:87.0, csw:27.2, zcon:86.1, hh:48.0},
+  {name:"Elmer Rodríguez", team:"NYY", ip:13.0, xERA:6.089, comp:-1.0168, z_kbb:-2.347, z_stuff:-1.4666, z_csw:0.3335, z_zcon:-0.6434, z_hh:-0.0148, kbb:-4.7, stuff:89.2, csw:27.3, zcon:89.5, hh:37.0},
+  {name:"JR Ritchie", team:"ATL", ip:25.2, xERA:4.651, comp:-1.1154, z_kbb:-1.0821, z_stuff:-0.7934, z_csw:-2.2828, z_zcon:-0.8525, z_hh:-0.1949, kbb:4.4, stuff:94.2, csw:23.2, zcon:90.3, hh:37.8},
+  {name:"Rhett Lowder", team:"CIN", ip:38.1, xERA:4.979, comp:-1.1203, z_kbb:-0.9377, z_stuff:-2.0096, z_csw:-0.1566, z_zcon:-1.3917, z_hh:-0.7383, kbb:5.4, stuff:85.2, csw:26.5, zcon:92.3, hh:40.5},
+];
+
+const MLB_XERA = 4.20;
+const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+const gc  = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+const tc  = isDark ? '#a0a09a' : '#6b6b66';
+const lc  = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.20)';
+const qlc = isDark ? 'rgba(255,255,255,0.17)' : 'rgba(0,0,0,0.11)';
+
+function quadColor(comp, xERA) {
+  if (comp >= 0 && xERA <= MLB_XERA) return {bg:'rgba(30,158,117,0.78)',  bd:'#0f6e56'};
+  if (comp >= 0 && xERA >  MLB_XERA) return {bg:'rgba(55,138,221,0.72)',  bd:'#185fa5'};
+  if (comp <  0 && xERA <= MLB_XERA) return {bg:'rgba(245,167,40,0.78)',  bd:'#b8760e'};
+  return                                     {bg:'rgba(136,135,128,0.55)', bd:'#5f5e5a'};
+}
+
+function zRow(val, label, dispVal) {
+  const capped = Math.max(-2.5, Math.min(2.5, val));
+  const pct = ((capped + 2.5) / 5) * 100;
+  const col = val >= 0 ? '#1d9e75' : '#d85a30';
+  const trk = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+  return `<div class="tip-row">
+    <span class="tip-row-label">${label}</span>
+    <span class="tip-row-val">${dispVal}</span>
+    <div class="tip-track" style="background:${trk};"><div class="tip-fill" style="width:${pct}%;background:${col};"></div></div>
+    <span class="tip-z" style="color:${col};">${val>=0?'+':''}${val.toFixed(2)}</span>
+  </div>`;
+}
+
+const chartData = pitchers.map(p => {
+  const c = quadColor(p.comp, p.xERA);
+  return { ...p, x: p.comp, y: p.xERA, r: Math.sqrt(p.ip) * 2.0,
+           backgroundColor: c.bg, borderColor: c.bd };
+});
+
+const quadLines = {
+  id:'quadLines',
+  afterDatasetsDraw(chart) {
+    const {ctx, chartArea:{left,right,top,bottom}, scales:{x,y}} = chart;
+    const mx = x.getPixelForValue(0);
+    const my = y.getPixelForValue(MLB_XERA);
+    ctx.save();
+    ctx.strokeStyle=lc; ctx.lineWidth=1; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(mx,top); ctx.lineTo(mx,bottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left,my); ctx.lineTo(right,my); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font='500 10.5px system-ui,sans-serif'; ctx.fillStyle=qlc;
+    ctx.textAlign='left';  ctx.fillText('Elite profile + results',     mx+7, top+15);
+    ctx.textAlign='right'; ctx.fillText('Results outrunning profile',  mx-7, top+15);
+    ctx.textAlign='left';  ctx.fillText('Profile without results yet', mx+7, bottom-7);
+    ctx.textAlign='right'; ctx.fillText('Below avg both',              mx-7, bottom-7);
+    ctx.restore();
+  }
+};
+
+const tip = document.getElementById('tip');
+
+new Chart(document.getElementById('scatter'), {
+  type: 'bubble',
+  data: { datasets: [{ data: chartData,
+    backgroundColor: chartData.map(d => d.backgroundColor),
+    borderColor:     chartData.map(d => d.borderColor),
+    borderWidth: 1.5 }]},
+  options: {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    layout: { padding: {top:22,right:18,bottom:10,left:10} },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: false,
+        external({chart, tooltip}) {
+          if (!tooltip.dataPoints?.length) { tip.style.display='none'; return; }
+          const d = tooltip.dataPoints[0].raw;
+          const compCol = d.comp >= 0 ? '#1d9e75' : '#d85a30';
+          tip.innerHTML = `
+            <div class="tip-name">${d.name} <span style="font-weight:400;opacity:.55;">(${d.team})</span></div>
+            <div class="tip-meta">
+              <div class="tip-meta-item"><label>Composite</label><div class="tip-val" style="color:${compCol};">${d.comp>=0?'+':''}${d.comp.toFixed(3)}</div></div>
+              <div class="tip-meta-item"><label>xERA</label><div class="tip-val">${d.xERA.toFixed(3)}</div></div>
+              <div class="tip-meta-item"><label>IP</label><div class="tip-val">${d.ip}</div></div>
+            </div>
+            <hr class="tip-divider">
+            <div class="tip-section-label">Component z-scores</div>
+            <div class="tip-rows">
+              ${zRow(d.z_kbb,   'K-BB% (25%)',      d.kbb.toFixed(1)+'%')}
+              ${zRow(d.z_stuff, 'Stuff+ (25%)',      d.stuff.toFixed(1))}
+              ${zRow(d.z_csw,   'CSW% (20%)',        d.csw.toFixed(1)+'%')}
+              ${zRow(d.z_zcon,  'Z-Contact% (20%)',  d.zcon.toFixed(1)+'%')}
+              ${zRow(d.z_hh,    'HardHit% (10%)',    d.hh.toFixed(1)+'%')}
+            </div>`;
+
+          const wrap  = document.getElementById('wrap');
+          const wRect = wrap.getBoundingClientRect();
+          const cRect = chart.canvas.getBoundingClientRect();
+          let lx = tooltip.caretX + (cRect.left - wRect.left) + 14;
+          let ty = tooltip.caretY + (cRect.top  - wRect.top)  - 10;
+          const ttW = 225;
+          if (lx + ttW > wRect.width) lx = tooltip.caretX + (cRect.left - wRect.left) - ttW - 10;
+          if (ty < 0) ty = 4;
+          tip.style.left    = lx + 'px';
+          tip.style.top     = ty + 'px';
+          tip.style.display = 'block';
+        }
+      }
+    },
+    scales: {
+      x: { grid:{color:gc}, min:-1.5, max:1.9,
+           title:{display:true, text:'Composite z-score (K-BB% 25% · Stuff+ 25% · CSW% 20% · Z-Contact% 20% · HardHit% 10%)', color:tc, font:{size:10}},
+           ticks:{color:tc, font:{size:11}} },
+      y: { grid:{color:gc}, reverse:true, min:1.5, max:7.0,
+           title:{display:true, text:'xERA (lower = better)', color:tc, font:{size:11}},
+           ticks:{color:tc, font:{size:11}, callback:v=>v.toFixed(2)} }
+    }
+  },
+  plugins: [quadLines]
+});
+
+document.getElementById('scatter').addEventListener('mouseleave', () => {
+  tip.style.display = 'none';
+});
+</script>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:1rem;font-size:12px;color:var(--color-text-secondary);padding-bottom:1rem;">
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(30,158,117,0.78);"></span>Elite profile + results</span>
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(55,138,221,0.72);"></span>Profile without results yet</span>
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(245,167,40,0.78);"></span>Results outrunning profile</span>
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(136,135,128,0.55);"></span>Below avg both</span>
+  <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(150,150,150,0.3);border:1px solid #888;"></span>Bubble = IP</span>
+</div>
