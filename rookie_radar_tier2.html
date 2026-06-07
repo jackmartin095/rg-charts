@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 Rookie Pitchers — Tier 2 Radar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #ffffff;
+    color: #1a1916;
+    padding: 20px 16px 16px;
+  }
+  .chart-title { font-size: 15px; font-weight: 600; color: #1a1916; margin-bottom: 4px; }
+  .chart-sub { font-size: 11.5px; color: #6b6860; margin-bottom: 12px; line-height: 1.5; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    width: 100%;
+  }
+  .cell { display: flex; flex-direction: column; align-items: center; }
+  .cell-name { font-size: 12px; font-weight: 600; color: #1a1916; margin-bottom: 1px; }
+  .cell-meta { font-size: 11px; color: #6b6860; margin-bottom: 1px; }
+  .cell-comp { font-size: 11px; font-weight: 600; margin-bottom: 4px; }
+  .cell-canvas { position: relative; width: 100%; height: 190px; }
+  .footer { font-size: 11px; color: #6b6860; margin-top: 10px; text-align: center; padding-bottom: 0.5rem; }
+
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+    .cell-canvas { height: 220px; }
+    .chart-title { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<p class="chart-title">Tier 2 — Profile comparison</p>
+<p class="chart-sub">Scaled relative to 2026 rookie class · Dashed ring = class avg · Hover or tap each point for raw stat</p>
+
+<div class="grid">
+  <div class="cell">
+    <div class="cell-name">Trevor McDonald</div>
+    <div class="cell-meta">SFG · 34.0 IP</div>
+    <div class="cell-comp" style="color:#d85a30;">Composite: +0.474</div>
+    <div class="cell-canvas"><canvas id="r1"></canvas></div>
+  </div>
+  <div class="cell">
+    <div class="cell-name">Parker Messick</div>
+    <div class="cell-meta">CLE · 69.1 IP</div>
+    <div class="cell-comp" style="color:#7f77dd;">Composite: +0.305</div>
+    <div class="cell-canvas"><canvas id="r2"></canvas></div>
+  </div>
+  <div class="cell">
+    <div class="cell-name">Connor Prielipp</div>
+    <div class="cell-meta">MIN · 39.1 IP</div>
+    <div class="cell-comp" style="color:#378add;">Composite: +0.016</div>
+    <div class="cell-canvas"><canvas id="r3"></canvas></div>
+  </div>
+  <div class="cell">
+    <div class="cell-name">Walbert Ureña</div>
+    <div class="cell-meta">LAA · 48.2 IP</div>
+    <div class="cell-comp" style="color:#1d9e75;">Composite: +0.082</div>
+    <div class="cell-canvas"><canvas id="r4"></canvas></div>
+  </div>
+</div>
+
+<p class="footer">Z-scores relative to 2026 rookie class · Hover or tap each point for raw stat</p>
+
+<script>
+const labels = ['K-BB%','Stuff+','CSW%','Z-Con%','HardHit%'];
+
+function scaleZ(z) { return Math.min(Math.max((z + 2.5) / 5.0, 0), 1); }
+
+const players = [
+  {
+    id: 'r1',
+    name: 'Trevor McDonald',
+    z:   [0.5067, 0.0935, 1.9644, 0.1318, -0.9504],
+    raw: ['15.3%', '100.7', '29.9%', '86.4%', '41.4%'],
+    color: '#d85a30',
+    fill: 'rgba(216,90,48,0.12)',
+  },
+  {
+    id: 'r2',
+    name: 'Parker Messick',
+    z:   [1.1036, -0.5727, -0.2119, 0.7777, 0.5869],
+    raw: ['19.5%', '95.7', '26.5%', '84.1%', '34.1%'],
+    color: '#7f77dd',
+    fill: 'rgba(127,119,221,0.12)',
+  },
+  {
+    id: 'r3',
+    name: 'Connor Prielipp',
+    z:   [0.3894, 0.3689, -0.1242, -0.7715, 0.0587],
+    raw: ['14.5%', '102.7', '26.7%', '89.6%', '36.6%'],
+    color: '#378add',
+    fill: 'rgba(55,138,221,0.12)',
+  },
+  {
+    id: 'r4',
+    name: 'Walbert Ureña',
+    z:   [-0.1931, -0.2811, 0.1152, 0.5682, 0.6383],
+    raw: ['10.3%', '97.9', '27.0%', '84.8%', '33.8%'],
+    color: '#1d9e75',
+    fill: 'rgba(30,158,117,0.12)',
+  },
+];
+
+const avgColor = 'rgba(0,0,0,0.14)';
+
+players.forEach(p => {
+  const canvas = document.getElementById(p.id);
+  const chartInst = new Chart(canvas, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: p.name,
+          data: p.z.map(scaleZ),
+          raw: p.raw,
+          backgroundColor: p.fill,
+          borderColor: p.color,
+          borderWidth: 2,
+          pointBackgroundColor: p.color,
+          pointBorderColor: 'transparent',
+          pointRadius: 2,
+          pointHoverRadius: 4,
+        },
+        {
+          label: 'Class avg',
+          data: [0,0,0,0,0].map(scaleZ),
+          raw: null,
+          backgroundColor: 'transparent',
+          borderColor: avgColor,
+          borderWidth: 1,
+          borderDash: [4,3],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title(items) { return items[0].dataset.label || ''; },
+            label(ctx) {
+              if (!ctx.dataset.raw) return '';
+              return ` ${labels[ctx.dataIndex]}: ${ctx.dataset.raw[ctx.dataIndex]}`;
+            }
+          },
+          backgroundColor: '#ffffff',
+          borderColor: 'rgba(0,0,0,0.12)',
+          borderWidth: 1,
+          titleColor: '#1a1916',
+          bodyColor: '#6b6860',
+          padding: 8,
+          displayColors: false,
+        }
+      },
+      scales: {
+        r: {
+          min: 0, max: 1,
+          ticks: { display: false },
+          grid: { color: 'rgba(0,0,0,0.07)' },
+          angleLines: { color: 'rgba(0,0,0,0.07)' },
+          pointLabels: { color: '#3a3a36', font: { size: 10, weight: '500' } }
+        }
+      }
+    }
+  });
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    const pts = chartInst.getElementsAtEventForMode(e, 'nearest', {radius:20}, true);
+    if (pts.length) chartInst.tooltip.setActiveElements([pts[0]], {x:t.clientX, y:t.clientY});
+    chartInst.update();
+  }, {passive:false});
+});
+</script>
+</body>
+</html>
