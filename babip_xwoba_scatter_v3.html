@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BABIP vs xwOBA — 2026 Hitters</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ffffff; color: #1a1916; padding: 18px 16px 14px; }
+  .chart-title { font-size: 15px; font-weight: 600; color: #1a1916; margin-bottom: 3px; }
+  .chart-sub { font-size: 11.5px; color: #6b6860; margin-bottom: 14px; line-height: 1.5; }
+  #wrap { position: relative; width: 100%; }
+  #scatter { display: block; width: 100% !important; height: 500px; }
+  #tip { display: none; position: fixed; background: #ffffff; border: 1px solid #e0ddd4; border-radius: 7px; padding: 10px 13px; font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; pointer-events: none; z-index: 9999; min-width: 200px; box-shadow: 0 4px 16px rgba(0,0,0,0.10); color: #1a1916; }
+  .tip-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .tip-team { font-weight: 400; color: #6b6860; }
+  .tip-grid { display: flex; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  .tip-item label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: #6b6860; }
+  .tip-val { font-size: 13px; font-weight: 700; color: #1a1916; }
+  .tip-sub { font-size: 10.5px; color: #6b6860; margin-top: 3px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; font-size: 11.5px; color: #6b6860; padding-bottom: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  @media (max-width: 600px) { #scatter { height: 360px; } .chart-title { font-size: 13px; } .chart-sub { font-size: 10.5px; } }
+</style>
+</head>
+<body>
+<p class="chart-title">BABIP vs xwOBA — 2026 qualified hitters (30%+ owned)</p>
+<p class="chart-sub">Above the line = BABIP outpacing expected production · Below = underperforming · Hover or tap for detail</p>
+<div id="wrap"><canvas id="scatter"></canvas><div id="tip"></div></div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#d85a30;"></div>Regression risk</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1d9e75;"></div>Underperforming / buy</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#c8c5bc;border:1px solid #a8a49c;"></div>Rest of field</div>
+</div>
+<script>
+const players = [
+  {name:"Riley Greene",team:"DET",pa:289,babip:0.411,xwoba:0.362,gap:0.049,wrc:141,rost:91,spd:1.9,tag:"sell"},
+  {name:"Brandon Marsh",team:"PHI",pa:241,babip:0.401,xwoba:0.338,gap:0.063,wrc:137,rost:46,spd:5.3,tag:"sell"},
+  {name:"Otto Lopez",team:"MIA",pa:288,babip:0.393,xwoba:0.342,gap:0.051,wrc:138,rost:88,spd:6.8,tag:"sell"},
+  {name:"Nick Kurtz",team:"ATH",pa:306,babip:0.39,xwoba:0.399,gap:-0.009,wrc:165,rost:98,spd:4.7,tag:"grey"},
+  {name:"Ezequiel Duran",team:"TEX",pa:216,babip:0.378,xwoba:0.316,gap:0.061,wrc:125,rost:41,spd:6.1,tag:"sell"},
+  {name:"Jac Caglianone",team:"KCR",pa:231,babip:0.376,xwoba:0.363,gap:0.013,wrc:124,rost:33,spd:4.0,tag:"grey"},
+  {name:"Shohei Ohtani",team:"LAD",pa:298,babip:0.367,xwoba:0.418,gap:-0.051,wrc:165,rost:100,spd:5.2,tag:"grey"},
+  {name:"Jung Hoo Lee",team:"SFG",pa:250,babip:0.365,xwoba:0.338,gap:0.027,wrc:135,rost:45,spd:5.2,tag:"sell"},
+  {name:"Randy Arozarena",team:"SEA",pa:300,babip:0.36,xwoba:0.353,gap:0.007,wrc:140,rost:95,spd:6.4,tag:"grey"},
+  {name:"James Wood",team:"WSN",pa:322,babip:0.358,xwoba:0.431,gap:-0.073,wrc:160,rost:99,spd:5.3,tag:"grey"},
+  {name:"Jordan Walker",team:"STL",pa:279,babip:0.357,xwoba:0.373,gap:-0.016,wrc:156,rost:94,spd:4.6,tag:"grey"},
+  {name:"Fernando Tatis Jr.",team:"SDP",pa:286,babip:0.354,xwoba:0.352,gap:0.002,wrc:101,rost:99,spd:4.6,tag:"grey"},
+  {name:"Josh Jung",team:"TEX",pa:267,babip:0.345,xwoba:0.352,gap:-0.007,wrc:135,rost:51,spd:1.9,tag:"grey"},
+  {name:"Willson Contreras",team:"BOS",pa:265,babip:0.345,xwoba:0.388,gap:-0.043,wrc:145,rost:63,spd:3.4,tag:"grey"},
+  {name:"Ceddanne Rafaela",team:"BOS",pa:245,babip:0.339,xwoba:0.298,gap:0.042,wrc:112,rost:57,spd:4.8,tag:"grey"},
+  {name:"Taylor Ward",team:"BAL",pa:317,babip:0.339,xwoba:0.358,gap:-0.02,wrc:129,rost:82,spd:2.5,tag:"grey"},
+  {name:"Michael Harris II",team:"ATL",pa:245,babip:0.335,xwoba:0.383,gap:-0.048,wrc:135,rost:90,spd:3.0,tag:"grey"},
+  {name:"Brice Turang",team:"MIL",pa:287,babip:0.333,xwoba:0.368,gap:-0.035,wrc:139,rost:99,spd:6.7,tag:"grey"},
+  {name:"Xavier Edwards",team:"MIA",pa:292,babip:0.332,xwoba:0.345,gap:-0.013,wrc:134,rost:94,spd:6.5,tag:"grey"},
+  {name:"Bryan Reynolds",team:"PIT",pa:298,babip:0.331,xwoba:0.364,gap:-0.033,wrc:130,rost:85,spd:5.8,tag:"grey"},
+  {name:"Corbin Carroll",team:"ARI",pa:277,babip:0.331,xwoba:0.365,gap:-0.034,wrc:152,rost:99,spd:7.0,tag:"grey"},
+  {name:"Luis Arraez",team:"SFG",pa:292,babip:0.329,xwoba:0.303,gap:0.026,wrc:122,rost:81,spd:6.4,tag:"grey"},
+  {name:"Ben Rice",team:"NYY",pa:265,babip:0.329,xwoba:0.381,gap:-0.052,wrc:174,rost:99,spd:5.3,tag:"grey"},
+  {name:"Jonathan Aranda",team:"TBR",pa:279,babip:0.327,xwoba:0.375,gap:-0.048,wrc:130,rost:65,spd:1.1,tag:"grey"},
+  {name:"Ryan O'Hearn",team:"PIT",pa:218,babip:0.326,xwoba:0.333,gap:-0.007,wrc:127,rost:63,spd:2.8,tag:"grey"},
+  {name:"Jake Bauers",team:"MIL",pa:234,babip:0.326,xwoba:0.369,gap:-0.043,wrc:147,rost:62,spd:4.3,tag:"grey"},
+  {name:"Wilyer Abreu",team:"BOS",pa:280,babip:0.323,xwoba:0.342,gap:-0.019,wrc:104,rost:69,spd:3.9,tag:"grey"},
+  {name:"Kevin McGonigle",team:"DET",pa:291,babip:0.322,xwoba:0.369,gap:-0.047,wrc:132,rost:91,spd:6.8,tag:"grey"},
+  {name:"Yordan Alvarez",team:"HOU",pa:300,babip:0.322,xwoba:0.491,gap:-0.169,wrc:189,rost:99,spd:2.0,tag:"grey"},
+  {name:"CJ Abrams",team:"WSN",pa:288,babip:0.32,xwoba:0.362,gap:-0.042,wrc:150,rost:97,spd:5.9,tag:"grey"},
+  {name:"Bobby Witt Jr.",team:"KCR",pa:307,babip:0.319,xwoba:0.384,gap:-0.065,wrc:119,rost:99,spd:5.8,tag:"grey"},
+  {name:"Matt Chapman",team:"SFG",pa:287,babip:0.317,xwoba:0.296,gap:0.022,wrc:115,rost:67,spd:2.4,tag:"grey"},
+  {name:"Ernie Clement",team:"TOR",pa:274,babip:0.317,xwoba:0.276,gap:0.042,wrc:118,rost:80,spd:3.9,tag:"grey"},
+  {name:"Pete Crow-Armstrong",team:"CHC",pa:291,babip:0.316,xwoba:0.353,gap:-0.037,wrc:120,rost:97,spd:7.1,tag:"grey"},
+  {name:"Michael Busch",team:"CHC",pa:300,babip:0.316,xwoba:0.349,gap:-0.033,wrc:123,rost:63,spd:3.4,tag:"grey"},
+  {name:"Carson Benge",team:"NYM",pa:255,babip:0.314,xwoba:0.349,gap:-0.035,wrc:104,rost:33,spd:6.2,tag:"grey"},
+  {name:"Rafael Devers",team:"SFG",pa:295,babip:0.312,xwoba:0.292,gap:0.02,wrc:96,rost:81,spd:2.5,tag:"grey"},
+  {name:"Freddie Freeman",team:"LAD",pa:290,babip:0.311,xwoba:0.381,gap:-0.07,wrc:138,rost:97,spd:3.7,tag:"grey"},
+  {name:"Alec Burleson",team:"STL",pa:284,babip:0.31,xwoba:0.389,gap:-0.079,wrc:135,rost:91,spd:2.9,tag:"grey"},
+  {name:"William Contreras",team:"MIL",pa:274,babip:0.309,xwoba:0.335,gap:-0.026,wrc:107,rost:99,spd:2.5,tag:"grey"},
+  {name:"Brandon Nimmo",team:"TEX",pa:287,babip:0.307,xwoba:0.377,gap:-0.07,wrc:109,rost:75,spd:3.9,tag:"grey"},
+  {name:"Chandler Simpson",team:"TBR",pa:254,babip:0.306,xwoba:0.253,gap:0.053,wrc:75,rost:51,spd:7.2,tag:"grey"},
+  {name:"Vladimir Guerrero Jr.",team:"TOR",pa:283,babip:0.305,xwoba:0.359,gap:-0.054,wrc:109,rost:99,spd:4.0,tag:"grey"},
+  {name:"Max Muncy",team:"LAD",pa:238,babip:0.304,xwoba:0.394,gap:-0.09,wrc:143,rost:68,spd:2.2,tag:"grey"},
+  {name:"Hunter Goodman",team:"COL",pa:266,babip:0.303,xwoba:0.327,gap:-0.024,wrc:115,rost:89,spd:4.1,tag:"grey"},
+  {name:"Shea Langeliers",team:"ATH",pa:284,babip:0.301,xwoba:0.376,gap:-0.074,wrc:140,rost:99,spd:2.8,tag:"grey"},
+  {name:"Seiya Suzuki",team:"CHC",pa:229,babip:0.301,xwoba:0.329,gap:-0.028,wrc:111,rost:82,spd:1.5,tag:"grey"},
+  {name:"Kazuma Okamoto",team:"TOR",pa:275,babip:0.301,xwoba:0.324,gap:-0.023,wrc:104,rost:63,spd:1.2,tag:"grey"},
+  {name:"Maikel Garcia",team:"KCR",pa:266,babip:0.3,xwoba:0.327,gap:-0.027,wrc:94,rost:86,spd:4.5,tag:"grey"},
+  {name:"Ian Happ",team:"CHC",pa:287,babip:0.299,xwoba:0.341,gap:-0.041,wrc:132,rost:88,spd:5.6,tag:"grey"},
+  {name:"Zach Neto",team:"LAA",pa:302,babip:0.299,xwoba:0.321,gap:-0.022,wrc:117,rost:82,spd:5.7,tag:"grey"},
+  {name:"Andy Pages",team:"LAD",pa:287,babip:0.298,xwoba:0.351,gap:-0.053,wrc:132,rost:96,spd:4.9,tag:"grey"},
+  {name:"Daylen Lile",team:"WSN",pa:300,babip:0.298,xwoba:0.331,gap:-0.034,wrc:107,rost:64,spd:5.4,tag:"grey"},
+  {name:"Brayan Rocchio",team:"CLE",pa:251,babip:0.297,xwoba:0.32,gap:-0.022,wrc:116,rost:44,spd:5.1,tag:"grey"},
+  {name:"Jazz Chisholm Jr.",team:"NYY",pa:262,babip:0.296,xwoba:0.294,gap:0.002,wrc:101,rost:93,spd:7.3,tag:"grey"},
+  {name:"Matt Olson",team:"ATL",pa:299,babip:0.293,xwoba:0.378,gap:-0.086,wrc:145,rost:99,spd:3.4,tag:"grey"},
+  {name:"Willy Adames",team:"SFG",pa:288,babip:0.292,xwoba:0.297,gap:-0.005,wrc:98,rost:74,spd:3.1,tag:"grey"},
+  {name:"Spencer Steer",team:"CIN",pa:260,babip:0.292,xwoba:0.363,gap:-0.071,wrc:112,rost:41,spd:4.3,tag:"grey"},
+  {name:"Casey Schmitt",team:"SFG",pa:261,babip:0.29,xwoba:0.348,gap:-0.058,wrc:127,rost:82,spd:4.6,tag:"grey"},
+  {name:"Luke Keaschall",team:"MIN",pa:257,babip:0.289,xwoba:0.284,gap:0.006,wrc:81,rost:55,spd:5.4,tag:"grey"},
+  {name:"Junior Caminero",team:"TBR",pa:286,babip:0.289,xwoba:0.372,gap:-0.083,wrc:141,rost:99,spd:1.7,tag:"grey"},
+  {name:"Spencer Torkelson",team:"DET",pa:263,babip:0.286,xwoba:0.313,gap:-0.028,wrc:101,rost:31,spd:1.1,tag:"grey"},
+  {name:"Kyle Tucker",team:"LAD",pa:280,babip:0.286,xwoba:0.323,gap:-0.037,wrc:103,rost:99,spd:6.3,tag:"grey"},
+  {name:"Kyle Schwarber",team:"PHI",pa:293,babip:0.285,xwoba:0.378,gap:-0.093,wrc:154,rost:99,spd:3.3,tag:"grey"},
+  {name:"Ozzie Albies",team:"ATL",pa:293,babip:0.284,xwoba:0.309,gap:-0.025,wrc:115,rost:96,spd:2.7,tag:"grey"},
+  {name:"Sal Stewart",team:"CIN",pa:293,babip:0.283,xwoba:0.364,gap:-0.08,wrc:120,rost:93,spd:4.1,tag:"grey"},
+  {name:"Jo Adell",team:"LAA",pa:286,babip:0.283,xwoba:0.331,gap:-0.048,wrc:84,rost:56,spd:3.6,tag:"grey"},
+  {name:"Alex Bregman",team:"CHC",pa:310,babip:0.282,xwoba:0.314,gap:-0.031,wrc:96,rost:91,spd:3.2,tag:"grey"},
+  {name:"Cody Bellinger",team:"NYY",pa:285,babip:0.281,xwoba:0.37,gap:-0.089,wrc:136,rost:99,spd:5.5,tag:"grey"},
+  {name:"Bryce Harper",team:"PHI",pa:282,babip:0.279,xwoba:0.414,gap:-0.135,wrc:145,rost:98,spd:4.6,tag:"grey"},
+  {name:"Ildemaro Vargas",team:"ARI",pa:231,babip:0.279,xwoba:0.312,gap:-0.033,wrc:101,rost:43,spd:4.7,tag:"grey"},
+  {name:"Josh Naylor",team:"SEA",pa:284,babip:0.276,xwoba:0.327,gap:-0.051,wrc:99,rost:82,spd:4.2,tag:"grey"},
+  {name:"Brandon Lowe",team:"PIT",pa:275,babip:0.275,xwoba:0.363,gap:-0.088,wrc:134,rost:88,spd:2.7,tag:"grey"},
+  {name:"Chase DeLauter",team:"CLE",pa:265,babip:0.272,xwoba:0.339,gap:-0.067,wrc:105,rost:65,spd:2.9,tag:"grey"},
+  {name:"Byron Buxton",team:"MIN",pa:261,babip:0.272,xwoba:0.338,gap:-0.066,wrc:138,rost:94,spd:6.1,tag:"grey"},
+  {name:"Carter Jensen",team:"KCR",pa:232,babip:0.271,xwoba:0.271,gap:0.0,wrc:80,rost:30,spd:1.6,tag:"grey"},
+  {name:"Colson Montgomery",team:"CHW",pa:270,babip:0.27,xwoba:0.326,gap:-0.056,wrc:120,rost:64,spd:1.9,tag:"grey"},
+  {name:"JJ Wetherholt",team:"STL",pa:285,babip:0.27,xwoba:0.35,gap:-0.08,wrc:114,rost:84,spd:5.1,tag:"grey"},
+  {name:"Trea Turner",team:"PHI",pa:296,babip:0.27,xwoba:0.286,gap:-0.017,wrc:71,rost:93,spd:6.0,tag:"grey"},
+  {name:"Pete Alonso",team:"BAL",pa:303,babip:0.267,xwoba:0.372,gap:-0.105,wrc:116,rost:97,spd:3.3,tag:"grey"},
+  {name:"Austin Riley",team:"ATL",pa:277,babip:0.265,xwoba:0.301,gap:-0.035,wrc:79,rost:85,spd:4.9,tag:"grey"},
+  {name:"Christian Walker",team:"HOU",pa:285,babip:0.265,xwoba:0.318,gap:-0.053,wrc:123,rost:86,spd:2.3,tag:"grey"},
+  {name:"Jakob Marsee",team:"MIA",pa:277,babip:0.265,xwoba:0.309,gap:-0.044,wrc:88,rost:49,spd:7.2,tag:"grey"},
+  {name:"Geraldo Perdomo",team:"ARI",pa:271,babip:0.264,xwoba:0.332,gap:-0.068,wrc:98,rost:85,spd:5.7,tag:"grey"},
+  {name:"Jarren Duran",team:"BOS",pa:271,babip:0.263,xwoba:0.295,gap:-0.032,wrc:76,rost:89,spd:7.3,tag:"grey"},
+  {name:"Juan Soto",team:"NYM",pa:218,babip:0.262,xwoba:0.413,gap:-0.151,wrc:150,rost:99,spd:4.6,tag:"grey"},
+  {name:"Dillon Dingler",team:"DET",pa:258,babip:0.261,xwoba:0.403,gap:-0.142,wrc:136,rost:77,spd:1.2,tag:"buy"},
+  {name:"Jackson Merrill",team:"SDP",pa:267,babip:0.259,xwoba:0.316,gap:-0.057,wrc:74,rost:83,spd:6.3,tag:"grey"},
+  {name:"Mike Trout",team:"LAA",pa:307,babip:0.258,xwoba:0.415,gap:-0.156,wrc:135,rost:97,spd:4.4,tag:"grey"},
+  {name:"Bo Bichette",team:"NYM",pa:296,babip:0.257,xwoba:0.326,gap:-0.069,wrc:72,rost:81,spd:3.4,tag:"grey"},
+  {name:"Ketel Marte",team:"ARI",pa:281,babip:0.256,xwoba:0.37,gap:-0.114,wrc:103,rost:99,spd:3.0,tag:"grey"},
+  {name:"Tyler Soderstrom",team:"ATH",pa:275,babip:0.256,xwoba:0.337,gap:-0.082,wrc:117,rost:83,spd:3.3,tag:"grey"},
+  {name:"Bryson Stott",team:"PHI",pa:233,babip:0.254,xwoba:0.315,gap:-0.06,wrc:84,rost:38,spd:6.4,tag:"grey"},
+  {name:"Isaac Paredes",team:"HOU",pa:265,babip:0.254,xwoba:0.321,gap:-0.067,wrc:109,rost:43,spd:1.1,tag:"grey"},
+  {name:"Gunnar Henderson",team:"BAL",pa:317,babip:0.253,xwoba:0.303,gap:-0.05,wrc:92,rost:98,spd:4.4,tag:"grey"},
+  {name:"Nico Hoerner",team:"CHC",pa:308,babip:0.252,xwoba:0.336,gap:-0.084,wrc:94,rost:97,spd:4.2,tag:"grey"},
+  {name:"Vinnie Pasquantino",team:"KCR",pa:284,babip:0.251,xwoba:0.319,gap:-0.068,wrc:82,rost:67,spd:4.6,tag:"grey"},
+  {name:"Trent Grisham",team:"NYY",pa:260,babip:0.25,xwoba:0.36,gap:-0.11,wrc:114,rost:42,spd:6.1,tag:"buy"},
+  {name:"Marcus Semien",team:"NYM",pa:268,babip:0.247,xwoba:0.324,gap:-0.077,wrc:75,rost:43,spd:3.6,tag:"grey"},
+  {name:"Liam Hicks",team:"MIA",pa:254,babip:0.243,xwoba:0.323,gap:-0.079,wrc:123,rost:90,spd:3.5,tag:"grey"},
+  {name:"Miguel Vargas",team:"CHW",pa:291,babip:0.239,xwoba:0.394,gap:-0.156,wrc:140,rost:90,spd:5.7,tag:"buy"},
+  {name:"Steven Kwan",team:"CLE",pa:264,babip:0.235,xwoba:0.298,gap:-0.064,wrc:73,rost:58,spd:3.5,tag:"grey"},
+  {name:"Dansby Swanson",team:"CHC",pa:251,babip:0.208,xwoba:0.286,gap:-0.078,wrc:73,rost:48,spd:6.6,tag:"grey"},
+  {name:"Salvador Perez",team:"KCR",pa:265,babip:0.207,xwoba:0.288,gap:-0.08,wrc:54,rost:76,spd:1.1,tag:"grey"},
+  {name:"Manny Machado",team:"SDP",pa:270,babip:0.176,xwoba:0.3,gap:-0.124,wrc:68,rost:94,spd:2.4,tag:"grey"},
+];
+
+const COLORS = {
+  sell: { fill:'rgba(216,90,48,0.88)', stroke:'#b03d18', label:'#c03818' },
+  buy:  { fill:'rgba(30,158,117,0.88)', stroke:'#0a7050', label:'#0a7050' },
+  grey: { fill:'rgba(178,174,166,0.32)', stroke:'rgba(130,126,118,0.45)' },
+};
+
+const chartData = players.map(p => ({
+  ...p, x: p.xwoba, y: p.babip,
+  r: p.tag === 'grey' ? 3 : 6,
+  backgroundColor: COLORS[p.tag].fill,
+  borderColor: COLORS[p.tag].stroke,
+  borderWidth: p.tag === 'grey' ? 0.8 : 1.5,
+}));
+
+const diagPlugin = {
+  id: 'diag',
+  afterDatasetsDraw(chart) {
+    const {ctx, scales:{x,y}} = chart;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 1; ctx.setLineDash([5,4]);
+    ctx.beginPath();
+    ctx.moveTo(x.getPixelForValue(.160), y.getPixelForValue(.160));
+    ctx.lineTo(x.getPixelForValue(.500), y.getPixelForValue(.500));
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '10px -apple-system,sans-serif';
+    ctx.fillStyle = 'rgba(0,0,0,0.20)';
+    ctx.textAlign = 'right';
+    ctx.fillText('BABIP = xwOBA', x.getPixelForValue(.480) - 4, y.getPixelForValue(.480) - 5);
+    ctx.restore();
+  }
+};
+
+const labelPlugin = {
+  id: 'labels',
+  afterDatasetsDraw(chart) {
+    const {ctx, scales:{x,y}} = chart;
+    ctx.save();
+    ctx.font = '600 10.5px -apple-system,sans-serif';
+    chartData.filter(d => d.tag !== 'grey').forEach(d => {
+      const px = x.getPixelForValue(d.x);
+      const py = y.getPixelForValue(d.y);
+      ctx.fillStyle = COLORS[d.tag].label;
+      ctx.textAlign = 'left';
+      ctx.fillText(d.name.split(' ').pop(), px + 8, py + 4);
+    });
+    ctx.restore();
+  }
+};
+
+const tip = document.getElementById('tip');
+
+function showTip(d, cx, cy) {
+  const gapCol = d.gap >= 0.025 ? '#b03d18' : d.gap <= -0.025 ? '#0a7050' : '#6b6860';
+  tip.innerHTML = `
+    <div class="tip-name">${d.name} <span class="tip-team">(${d.team})</span></div>
+    <div class="tip-grid">
+      <div class="tip-item"><label>BABIP</label><div class="tip-val">${d.babip.toFixed(3)}</div></div>
+      <div class="tip-item"><label>xwOBA</label><div class="tip-val">${d.xwoba.toFixed(3)}</div></div>
+      <div class="tip-item"><label>Gap</label><div class="tip-val" style="color:${gapCol};">${d.gap>=0?'+':''}${d.gap.toFixed(3)}</div></div>
+      <div class="tip-item"><label>Rost%</label><div class="tip-val">${d.rost}%</div></div>
+    </div>
+    <div class="tip-sub">wRC+ ${d.wrc} · ${d.pa} PA · Spd ${d.spd}</div>`;
+  const tw = 215, th = 110;
+  let lx = cx + 14, ty = cy - 10;
+  if (lx + tw > window.innerWidth - 10) lx = cx - tw - 14;
+  if (ty + th > window.innerHeight - 10) ty = cy - th;
+  if (ty < 8) ty = 8;
+  tip.style.left = lx + 'px'; tip.style.top = ty + 'px'; tip.style.display = 'block';
+}
+
+const chart = new Chart(document.getElementById('scatter'), {
+  type: 'bubble',
+  data: { datasets: [{ data: chartData, backgroundColor: chartData.map(d=>d.backgroundColor), borderColor: chartData.map(d=>d.borderColor), borderWidth: chartData.map(d=>d.borderWidth) }]},
+  options: {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    layout: { padding: {top:20, right:80, bottom:10, left:10} },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: false,
+        external({chart, tooltip}) {
+          if (!tooltip.dataPoints?.length) { tip.style.display='none'; return; }
+          const d = tooltip.dataPoints[0].raw;
+          const rect = chart.canvas.getBoundingClientRect();
+          showTip(d, rect.left + tooltip.caretX, rect.top + tooltip.caretY);
+        }
+      }
+    },
+    scales: {
+      x: { grid:{color:'rgba(0,0,0,0.055)'}, min:.220, max:.510, title:{display:true, text:'xwOBA', color:'#6b6860', font:{size:11}}, ticks:{color:'#6b6860', font:{size:11}, callback:v=>v.toFixed(3)} },
+      y: { grid:{color:'rgba(0,0,0,0.055)'}, min:.160, max:.420, title:{display:true, text:'BABIP', color:'#6b6860', font:{size:11}}, ticks:{color:'#6b6860', font:{size:11}, callback:v=>v.toFixed(3)} }
+    }
+  },
+  plugins: [diagPlugin, labelPlugin]
+});
+
+document.getElementById('scatter').addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  const pts = chart.getElementsAtEventForMode(e, 'nearest', {radius:20}, true);
+  if (pts.length) showTip(chartData[pts[0].index], t.clientX, t.clientY);
+  else tip.style.display = 'none';
+}, {passive:false});
+
+document.getElementById('scatter').addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+</script>
+</body>
+</html>
