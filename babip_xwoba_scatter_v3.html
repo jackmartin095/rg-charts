@@ -32,18 +32,19 @@
 <div class="legend">
   <div class="legend-item"><div class="legend-dot" style="background:#d85a30;"></div>Regression risk</div>
   <div class="legend-item"><div class="legend-dot" style="background:#1d9e75;"></div>Underperforming / buy</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#888780;border:1px solid #666;"></div>Reference point</div>
   <div class="legend-item"><div class="legend-dot" style="background:#c8c5bc;border:1px solid #a8a49c;"></div>Rest of field</div>
 </div>
 <script>
 const players = [
-  {name:"Riley Greene",team:"DET",pa:289,babip:0.411,xwoba:0.362,gap:0.049,wrc:141,rost:92,spd:1.9,tag:"sell"},
+  {name:"Riley Greene",team:"DET",pa:289,babip:0.411,xwoba:0.362,gap:0.049,wrc:141,rost:92,spd:1.9,tag:"sell",labelOffset:{x:8,y:-8}},
   {name:"Brandon Marsh",team:"PHI",pa:241,babip:0.401,xwoba:0.338,gap:0.063,wrc:137,rost:46,spd:5.3,tag:"sell"},
-  {name:"Otto Lopez",team:"MIA",pa:288,babip:0.393,xwoba:0.342,gap:0.051,wrc:138,rost:89,spd:6.8,tag:"sell"},
-  {name:"Nick Kurtz",team:"ATH",pa:306,babip:0.39,xwoba:0.399,gap:-0.009,wrc:165,rost:98,spd:4.7,tag:"grey"},
-  {name:"Ezequiel Duran",team:"TEX",pa:216,babip:0.378,xwoba:0.316,gap:0.061,wrc:125,rost:41,spd:6.1,tag:"sell"},
+  {name:"Otto Lopez",team:"MIA",pa:288,babip:0.393,xwoba:0.342,gap:0.051,wrc:138,rost:89,spd:6.8,tag:"sell",labelOffset:{x:8,y:14}},
+  {name:"Nick Kurtz",team:"ATH",pa:306,babip:0.39,xwoba:0.399,gap:-0.009,wrc:165,rost:98,spd:4.7,tag:"ref",labelOffset:{x:8,y:4}},
+  {name:"Ezequiel Duran",team:"TEX",pa:216,babip:0.378,xwoba:0.316,gap:0.061,wrc:125,rost:41,spd:6.1,tag:"sell",labelOffset:{x:8,y:4}},
   {name:"Jac Caglianone",team:"KCR",pa:231,babip:0.376,xwoba:0.363,gap:0.013,wrc:124,rost:46,spd:4.0,tag:"grey"},
   {name:"Shohei Ohtani",team:"LAD",pa:298,babip:0.367,xwoba:0.418,gap:-0.051,wrc:165,rost:100,spd:5.2,tag:"grey"},
-  {name:"Jung Hoo Lee",team:"SFG",pa:250,babip:0.365,xwoba:0.338,gap:0.027,wrc:135,rost:54,spd:5.2,tag:"sell"},
+  {name:"Jung Hoo Lee",team:"SFG",pa:250,babip:0.365,xwoba:0.338,gap:0.027,wrc:135,rost:54,spd:5.2,tag:"sell",labelOffset:{x:8,y:4}},
   {name:"James Wood",team:"WSN",pa:322,babip:0.358,xwoba:0.431,gap:-0.073,wrc:160,rost:99,spd:5.3,tag:"grey"},
   {name:"Jordan Walker",team:"STL",pa:279,babip:0.357,xwoba:0.373,gap:-0.016,wrc:156,rost:94,spd:4.6,tag:"grey"},
   {name:"Fernando Tatis Jr.",team:"SDP",pa:286,babip:0.354,xwoba:0.352,gap:0.002,wrc:101,rost:99,spd:4.6,tag:"grey"},
@@ -119,7 +120,7 @@ const players = [
   {name:"Geraldo Perdomo",team:"ARI",pa:271,babip:0.264,xwoba:0.332,gap:-0.068,wrc:98,rost:85,spd:5.7,tag:"grey"},
   {name:"Jarren Duran",team:"BOS",pa:271,babip:0.263,xwoba:0.295,gap:-0.032,wrc:76,rost:87,spd:7.3,tag:"grey"},
   {name:"Juan Soto",team:"NYM",pa:218,babip:0.262,xwoba:0.413,gap:-0.151,wrc:150,rost:99,spd:4.6,tag:"grey"},
-  {name:"Dillon Dingler",team:"DET",pa:258,babip:0.261,xwoba:0.403,gap:-0.142,wrc:136,rost:81,spd:1.2,tag:"buy"},
+  {name:"Dillon Dingler",team:"DET",pa:258,babip:0.261,xwoba:0.403,gap:-0.142,wrc:136,rost:81,spd:1.2,tag:"buy",labelOffset:{x:8,y:4}},
   {name:"Jackson Merrill",team:"SDP",pa:267,babip:0.259,xwoba:0.316,gap:-0.057,wrc:74,rost:83,spd:6.3,tag:"grey"},
   {name:"Mike Trout",team:"LAA",pa:307,babip:0.258,xwoba:0.415,gap:-0.156,wrc:135,rost:97,spd:4.4,tag:"grey"},
   {name:"Bo Bichette",team:"NYM",pa:296,babip:0.257,xwoba:0.326,gap:-0.069,wrc:72,rost:83,spd:3.4,tag:"grey"},
@@ -133,23 +134,24 @@ const players = [
   {name:"Matt McLain",team:"CIN",pa:253,babip:0.252,xwoba:0.323,gap:-0.072,wrc:88,rost:31,spd:4.6,tag:"grey"},
   {name:"Marcus Semien",team:"NYM",pa:268,babip:0.247,xwoba:0.324,gap:-0.077,wrc:75,rost:43,spd:3.6,tag:"grey"},
   {name:"Liam Hicks",team:"MIA",pa:254,babip:0.243,xwoba:0.323,gap:-0.079,wrc:123,rost:90,spd:3.5,tag:"grey"},
-  {name:"Miguel Vargas",team:"CHW",pa:291,babip:0.239,xwoba:0.394,gap:-0.156,wrc:140,rost:91,spd:5.7,tag:"buy"},
+  {name:"Miguel Vargas",team:"CHW",pa:291,babip:0.239,xwoba:0.394,gap:-0.156,wrc:140,rost:91,spd:5.7,tag:"buy",labelOffset:{x:8,y:4}},
   {name:"Steven Kwan",team:"CLE",pa:264,babip:0.235,xwoba:0.298,gap:-0.064,wrc:73,rost:56,spd:3.5,tag:"grey"},
   {name:"Dansby Swanson",team:"CHC",pa:251,babip:0.208,xwoba:0.286,gap:-0.078,wrc:73,rost:46,spd:6.6,tag:"grey"},
   {name:"Salvador Perez",team:"KCR",pa:265,babip:0.207,xwoba:0.288,gap:-0.08,wrc:54,rost:74,spd:1.1,tag:"grey"},
   {name:"Manny Machado",team:"SDP",pa:270,babip:0.176,xwoba:0.3,gap:-0.124,wrc:68,rost:93,spd:2.4,tag:"grey"},
-  {name:"Trent Grisham",team:"NYY",pa:260,babip:0.25,xwoba:0.36,gap:-0.11,wrc:114,rost:42,spd:6.1,tag:"buy"},
+  {name:"Trent Grisham",team:"NYY",pa:260,babip:0.25,xwoba:0.36,gap:-0.11,wrc:114,rost:42,spd:6.1,tag:"buy",labelOffset:{x:8,y:4}},
 ];
 
 const COLORS = {
   sell: { fill:'rgba(216,90,48,0.88)', stroke:'#b03d18', label:'#c03818' },
   buy:  { fill:'rgba(30,158,117,0.88)', stroke:'#0a7050', label:'#0a7050' },
+  ref:  { fill:'rgba(120,118,112,0.70)', stroke:'#555350', label:'#444240' },
   grey: { fill:'rgba(178,174,166,0.32)', stroke:'rgba(130,126,118,0.45)' },
 };
 
 const chartData = players.map(p => ({
   ...p, x: p.xwoba, y: p.babip,
-  r: p.tag === 'grey' ? 3 : 6,
+  r: p.tag === 'grey' ? 3 : p.tag === 'ref' ? 5 : 6,
   backgroundColor: COLORS[p.tag].fill,
   borderColor: COLORS[p.tag].stroke,
   borderWidth: p.tag === 'grey' ? 0.8 : 1.5,
@@ -183,9 +185,11 @@ const labelPlugin = {
     chartData.filter(d => d.tag !== 'grey').forEach(d => {
       const px = x.getPixelForValue(d.x);
       const py = y.getPixelForValue(d.y);
+      const short = d.name.split(' ').pop();
+      const offset = d.labelOffset || {x:8, y:4};
       ctx.fillStyle = COLORS[d.tag].label;
-      ctx.textAlign = 'left';
-      ctx.fillText(d.name.split(' ').pop(), px + 8, py + 4);
+      ctx.textAlign = offset.x < 0 ? 'right' : 'left';
+      ctx.fillText(short, px + offset.x, py + offset.y);
     });
     ctx.restore();
   }
