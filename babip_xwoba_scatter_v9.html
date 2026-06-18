@@ -190,7 +190,7 @@ const labelOffsets = {
 
 const chartData = players.map(p => ({
   ...p, x: p.xwoba, y: p.babip,
-  r: p.tag === 'grey' ? 3 : 6,
+  r: p.tag === 'grey' ? 3 : 4.5,
   backgroundColor: COLORS[p.tag].fill,
   borderColor: COLORS[p.tag].stroke,
   borderWidth: p.tag === 'grey' ? 0.8 : 1.5,
