@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RG Scatter Base</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  /* =========================================================================
+     DESIGN TOKENS  (the shared system, edit here once, every chart inherits)
+     All values are defined IN this file, so nothing depends on WordPress
+     variables that do not cross the iframe boundary.
+     ========================================================================= */
+  :root {
+    --bg:            #ffffff;
+    --text-primary:  #1a1916;
+    --text-secondary:#6b6860;
+    --grid:          rgba(0,0,0,0.055);
+    --ref-line:      rgba(0,0,0,0.16);
+    --ref-label:     rgba(0,0,0,0.34);
+    --tip-bg:        #ffffff;
+    --tip-border:    #e0ddd4;
+    --tip-shadow:    rgba(0,0,0,0.10);
+    /* categorical palette, value neutral on purpose, see note in CONFIG */
+    --c-a-fill:   rgba(47,127,193,0.80);   --c-a-line: #1f5a8c;
+    --c-b-fill:   rgba(232,148,31,0.85);   --c-b-line: #b46e0f;
+    --c-mid-fill: rgba(178,174,166,0.42);  --c-mid-line: rgba(130,126,118,0.5);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:            #15140f;
+      --text-primary:  #e8e6df;
+      --text-secondary:#a39a8c;
+      --grid:          rgba(255,255,255,0.07);
+      --ref-line:      rgba(255,255,255,0.24);
+      --ref-label:     rgba(255,255,255,0.36);
+      --tip-bg:        #1f1e18;
+      --tip-border:    rgba(255,255,255,0.14);
+      --tip-shadow:    rgba(0,0,0,0.5);
+      --c-a-fill:   rgba(82,156,220,0.82);   --c-a-line: #6fb0e6;
+      --c-b-fill:   rgba(240,165,60,0.85);   --c-b-line: #f0bc6a;
+      --c-mid-fill: rgba(150,146,138,0.40);  --c-mid-line: rgba(180,176,168,0.5);
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    padding: 18px 16px 14px;
+  }
+  .chart-title { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+  .chart-sub   { font-size: 11.5px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5; }
+
+  #wrap { position: relative; width: 100%; }
+  #scatter { display: block; width: 100% !important; height: 520px; }
+  @media (max-width: 600px) {
+    #scatter { height: 380px; }
+    .chart-title { font-size: 13px; }
+    .chart-sub   { font-size: 10.5px; }
+  }
+
+  #tip {
+    display: none; position: fixed; z-index: 9999; pointer-events: none;
+    min-width: 200px; padding: 10px 13px;
+    background: var(--tip-bg); color: var(--text-primary);
+    border: 1px solid var(--tip-border); border-radius: 7px;
+    box-shadow: 0 4px 16px var(--tip-shadow);
+    font-size: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  .tip-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .tip-team { font-weight: 400; color: var(--text-secondary); }
+  .tip-grid { display: flex; gap: 12px; margin-bottom: 4px; flex-wrap: wrap; }
+  .tip-item label { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); }
+  .tip-val  { font-size: 13px; font-weight: 700; }
+  .tip-sub  { font-size: 10.5px; color: var(--text-secondary); margin-top: 3px; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 11px; color: var(--text-secondary); padding-bottom: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot  { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<p class="chart-title" id="chartTitle"></p>
+<p class="chart-sub" id="chartSub"></p>
+<div id="wrap"><canvas id="scatter"></canvas><div id="tip"></div></div>
+<div class="legend" id="legend"></div>
+
+<script>
+/* ===========================================================================
+   1. CONFIG  ── the per-article edit zone.
+   To make a new chart: copy this file, rename it, swap DATA below, and adjust
+   the fields here. You should not need to touch the ENGINE section.
+   =========================================================================== */
+const CONFIG = {
+  title:    "Stuff+ vs Location+: where stuff and command diverge",
+  subtitle: "Stuff+ on the vertical, Location+ on the horizontal · above the line, stuff leads; below it, command leads · 50+ IP · hover or tap for detail",
+
+  // axis fields map to keys on each DATA row
+  x: { key: "locationPlus", label: "Location+", min: 79, max: 127, fmt: v => v.toFixed(0) },
+  y: { key: "stuffPlus",    label: "Stuff+",    min: 79, max: 127, fmt: v => v.toFixed(0) },
+
+  // reference geometry. 'diagonal' draws y = x (the gap line).
+  // switch to 'cross' for a future quadrant piece (e.g. the 100 by 100 grid).
+  reference: {
+    type: "diagonal",                 // 'diagonal' | 'cross' | 'none'
+    label: "Stuff+ = Location+",
+    // used only when type === 'cross':
+    crossX: 100, crossY: 100,
+    quadrants: { tr: "", tl: "", br: "", bl: "" }
+  },
+
+  // gap is defined as y minus x. classify decides each point's category.
+  // threshold of 5 keeps a neutral band around the line.
+  gapThreshold: 5,
+  classify(d) {
+    const g = d[CONFIG.y.key] - d[CONFIG.x.key];
+    if (g >=  CONFIG.gapThreshold) return "a";
+    if (g <= -CONFIG.gapThreshold) return "b";
+    return "mid";
+  },
+
+  // categories drive both point color and the legend.
+  // NOTE: blue vs amber on purpose, not green vs red. Neither side of this
+  // gap is "good", a pitcher leaning on stuff is not better than one leaning
+  // on command, so a value-laden palette would mislead. Swap for a future
+  // chart where one side genuinely is better.
+  categories: {
+    a:   { label: "Stuff outpaces command", fill: "--c-a-fill",   line: "--c-a-line"   },
+    b:   { label: "Command outpaces stuff", fill: "--c-b-fill",   line: "--c-b-line"   },
+    mid: { label: "Balanced",               fill: "--c-mid-fill", line: "--c-mid-line" }
+  },
+
+  // bubble sizing. field:null = fixed radius. set field to a key (e.g. "ip")
+  // to size by a third variable.
+  bubble: { field: null, base: 5, scale: 2.0, min: 3 },
+
+  // direct on-canvas labels for the N points with the largest absolute gap.
+  labels: {
+    topN: 6,
+    shorten: name => name.split(" ").pop(),
+    offsets: {}   // optional per-name nudge, e.g. {"Some Name": {x:8,y:-8}}
+  },
+
+  // tooltip contents. return name, team, an array of headline stats, and a sub line.
+  tooltip(d) {
+    const gap = d[CONFIG.y.key] - d[CONFIG.x.key];
+    const gapCol = gap >= CONFIG.gapThreshold ? token("--c-a-line")
+                 : gap <= -CONFIG.gapThreshold ? token("--c-b-line")
+                 : token("--text-secondary");
+    return {
+      name: d.name, team: d.team,
+      stats: [
+        { label: CONFIG.y.label, val: d[CONFIG.y.key].toFixed(0) },
+        { label: CONFIG.x.label, val: d[CONFIG.x.key].toFixed(0) },
+        { label: "Gap", val: (gap >= 0 ? "+" : "") + gap.toFixed(0), color: gapCol }
+      ],
+      sub: [d.xera != null ? ("xERA " + d.xera.toFixed(2)) : null, d.ip != null ? ("IP " + d.ip) : null].filter(Boolean).join(" · ")
+    };
+  }
+};
+
+/* ===========================================================================
+   2. DATA  ── replace this entire array with the FanGraphs export.
+   ---------------------------------------------------------------------------
+   !!  PLACEHOLDER VALUES. THESE ARE NOT REAL Stuff+ / Location+ NUMBERS.  !!
+   !!  They exist only to show layout, color split, and labels. Swap them  !!
+   !!  for the real export before publishing anything.                      !!
+   =========================================================================== */
+const DATA = [
+  { name: "Kris Bubic", team: "KCR", stuffPlus: 93.41709677419354, locationPlus: 99.94724565756825, ip: 50.1, xera: 4.448344791675114 },
+  { name: "Stephen Kolek", team: "KCR", stuffPlus: 91.89432065217392, locationPlus: 108.25008152173916, ip: 50.1, xera: 3.4343855993090044 },
+  { name: "Jacob Lopez", team: "ATH", stuffPlus: 92.94983986672602, locationPlus: 100.67452050905209, ip: 50.2, xera: 3.9295276368888055 },
+  { name: "Steven Matz", team: "TBR", stuffPlus: 97.54511999999998, locationPlus: 104.79993142857144, ip: 51.0, xera: 5.900766178007716 },
+  { name: "Brad Lord", team: "WSN", stuffPlus: 95.26294610778444, locationPlus: 101.92661077844312, ip: 51.0, xera: 3.50978223067598 },
+  { name: "Jake Irvin", team: "WSN", stuffPlus: 99.12544354838712, locationPlus: 99.99743951612903, ip: 51.2, xera: 5.14073439617247 },
+  { name: "Casey Mize", team: "DET", stuffPlus: 88.83263427109974, locationPlus: 104.69291560102296, ip: 52.1, xera: 3.024752012903762 },
+  { name: "Tyler Phillips", team: "MIA", stuffPlus: 96.82287098541184, locationPlus: 97.67414484147264, ip: 52.1, xera: 4.201361728378179 },
+  { name: "Rhett Lowder", team: "CIN", stuffPlus: 85.38461538461539, locationPlus: 102.33986813186816, ip: 52.1, xera: 5.175686519102278 },
+  { name: "Clay Holmes", team: "NYM", stuffPlus: 101.35242532855438, locationPlus: 102.76974910394264, ip: 52.2, xera: 3.8388429419863583 },
+  { name: "Chris Paddack", team: "2TM", stuffPlus: 88.73096181092589, locationPlus: 110.25820887689164, ip: 53.0, xera: 4.888296701017154 },
+  { name: "Tarik Skubal", team: "DET", stuffPlus: 117.7296212121212, locationPlus: 106.28424242424244, ip: 53.2, xera: 3.616107774279842 },
+  { name: "Sean Manaea", team: "NYM", stuffPlus: 103.43546519212, locationPlus: 97.77289663013576, ip: 54.1, xera: 4.061295390277373 },
+  { name: "Kai-Wei Teng", team: "HOU", stuffPlus: 97.19699315689668, locationPlus: 92.1472549262099, ip: 54.1, xera: 4.432350892500405 },
+  { name: "Simeon Woods Richardson", team: "2TM", stuffPlus: 87.33597533571502, locationPlus: 94.88197798692482, ip: 54.2, xera: 5.729007020944569 },
+  { name: "Trey Yesavage", team: "TOR", stuffPlus: 110.43371169125992, locationPlus: 86.6100794551646, ip: 55.0, xera: 2.9528339251977638 },
+  { name: "Connor Prielipp", team: "MIN", stuffPlus: 101.2165878725591, locationPlus: 103.14433710174715, ip: 55.2, xera: 4.316536949673827 },
+  { name: "Chris Bassitt", team: "BAL", stuffPlus: 95.82400318003704, locationPlus: 99.98106862213372, ip: 56.1, xera: 4.972818356734996 },
+  { name: "Tyler Mahle", team: "SFG", stuffPlus: 88.97916926272066, locationPlus: 109.38529595015576, ip: 56.2, xera: 4.1444629382485525 },
+  { name: "Chad Patrick", team: "MIL", stuffPlus: 98.7254208089796, locationPlus: 97.72785879775836, ip: 57.0, xera: 4.20439922413604 },
+  { name: "Payton Tolle", team: "BOS", stuffPlus: 114.67179190751445, locationPlus: 95.00869364161854, ip: 58.1, xera: 2.665370924840219 },
+  { name: "Eric Lauer", team: "2TM", stuffPlus: 87.94210849962406, locationPlus: 101.67746860649896, ip: 58.2, xera: 5.351011302816655 },
+  { name: "Aaron Civale", team: "ATH", stuffPlus: 95.54270161290326, locationPlus: 109.46298387096776, ip: 58.2, xera: 5.524705067171742 },
+  { name: "Janson Junk", team: "MIA", stuffPlus: 101.07247899159664, locationPlus: 111.2086764705882, ip: 60.0, xera: 3.978878106466185 },
+  { name: "Brayan Bello", team: "BOS", stuffPlus: 92.2886604002736, locationPlus: 102.62436125800276, ip: 61.0, xera: 6.148228067335826 },
+  { name: "Max Fried", team: "NYY", stuffPlus: 105.4885278080698, locationPlus: 101.00745910577972, ip: 61.2, xera: 2.5817778384765635 },
+  { name: "Brandon Young", team: "BAL", stuffPlus: 95.57916142557649, locationPlus: 104.23016771488469, ip: 62.1, xera: 4.326287158147562 },
+  { name: "Zack Wheeler", team: "PHI", stuffPlus: 105.705644820296, locationPlus: 108.14923890063426, ip: 62.2, xera: 3.0365724278637254 },
+  { name: "Luis Severino", team: "ATH", stuffPlus: 107.21159153633852, locationPlus: 102.50031278748844, ip: 62.2, xera: 4.172772367988428 },
+  { name: "Eury Pérez", team: "MIA", stuffPlus: 117.82389148737138, locationPlus: 93.36372310570624, ip: 62.2, xera: 4.90794381433139 },
+  { name: "Brandon Sproat", team: "MIL", stuffPlus: 99.07339040431548, locationPlus: 93.65206289876784, ip: 63.2, xera: 5.105807726994061 },
+  { name: "Peter Lambert", team: "HOU", stuffPlus: 90.51866923818709, locationPlus: 100.46570877531342, ip: 64.0, xera: 3.5216089554134777 },
+  { name: "David Peterson", team: "NYM", stuffPlus: 89.16253988298672, locationPlus: 98.7540541868092, ip: 64.0, xera: 4.814568049242977 },
+  { name: "Jack Kochanowicz", team: "LAA", stuffPlus: 94.4615579710145, locationPlus: 92.99623188405798, ip: 64.0, xera: 5.477560530956706 },
+  { name: "Emmet Sheehan", team: "LAD", stuffPlus: 98.22511332728922, locationPlus: 109.0752130553037, ip: 64.1, xera: 3.789499550853213 },
+  { name: "Patrick Corbin", team: "TOR", stuffPlus: 92.85775800711744, locationPlus: 103.45955516014234, ip: 64.2, xera: 5.617238375601498 },
+  { name: "Andrew Painter", team: "PHI", stuffPlus: 100.29625646127478, locationPlus: 103.28391584757762, ip: 65.0, xera: 5.090077551748257 },
+  { name: "Jack Flaherty", team: "DET", stuffPlus: 99.62621875000002, locationPlus: 94.78709375000004, ip: 65.2, xera: 4.637890260016377 },
+  { name: "Adrian Houser", team: "SFG", stuffPlus: 88.75830324909745, locationPlus: 107.97122743682309, ip: 66.0, xera: 5.670404779670083 },
+  { name: "Kyle Freeland", team: "COL", stuffPlus: 91.42884924174844, locationPlus: 102.70278322925957, ip: 66.0, xera: 5.602807054046332 },
+  { name: "Brady Singer", team: "CIN", stuffPlus: 91.16402695871948, locationPlus: 97.25491154170176, ip: 66.0, xera: 5.785084860328778 },
+  { name: "Bailey Ober", team: "MIN", stuffPlus: 93.2362109375, locationPlus: 91.26255859375, ip: 66.2, xera: 4.314599232351034 },
+  { name: "Edward Cabrera", team: "CHC", stuffPlus: 93.40009090909092, locationPlus: 104.4154, ip: 67.1, xera: 4.862892295775235 },
+  { name: "Walbert Ureña", team: "LAA", stuffPlus: 100.27795612494054, locationPlus: 103.5500263902516, ip: 67.1, xera: 3.2538949783247904 },
+  { name: "Jameson Taillon", team: "CHC", stuffPlus: 92.59787234042554, locationPlus: 101.81033687943264, ip: 67.2, xera: 5.403770844585206 },
+  { name: "Shane McClanahan", team: "TBR", stuffPlus: 107.96750452079569, locationPlus: 93.14877034358052, ip: 67.2, xera: 3.912102834901954 },
+  { name: "Carmen Mlodzinski", team: "PIT", stuffPlus: 91.79313582518692, locationPlus: 104.2814528546784, ip: 67.2, xera: 4.666231499489602 },
+  { name: "Martín Pérez", team: "ATL", stuffPlus: 88.04352840415847, locationPlus: 102.55257278367102, ip: 68.0, xera: 3.899405702491201 },
+  { name: "Ben Brown", team: "CHC", stuffPlus: 101.2815041495149, locationPlus: 98.94032292755884, ip: 68.0, xera: 3.161767285814983 },
+  { name: "Roki Sasaki", team: "LAD", stuffPlus: 108.30326848249024, locationPlus: 97.38152529182878, ip: 68.0, xera: 4.323218434366638 },
+  { name: "Grant Holmes", team: "ATL", stuffPlus: 88.53152482269506, locationPlus: 98.58143617021274, ip: 68.2, xera: 4.719545712552794 },
+  { name: "Spencer Arrighetti", team: "HOU", stuffPlus: 99.31133928571433, locationPlus: 92.54032142857142, ip: 69.0, xera: 4.565440534148136 },
+  { name: "Kumar Rocker", team: "TEX", stuffPlus: 91.16948004564598, locationPlus: 97.80643429740684, ip: 69.0, xera: 5.070885386588517 },
+  { name: "Sonny Gray", team: "BOS", stuffPlus: 101.72521572387345, locationPlus: 98.94157238734418, ip: 69.1, xera: 3.947353760673866 },
+  { name: "Merrill Kelly", team: "ARI", stuffPlus: 87.51499089253187, locationPlus: 101.35801457194898, ip: 69.2, xera: 7.47050736665236 },
+  { name: "Kyle Leahy", team: "STL", stuffPlus: 89.32203389830508, locationPlus: 105.3281525423729, ip: 70.0, xera: 6.093413230870106 },
+  { name: "Anthony Kay", team: "CHW", stuffPlus: 104.1993828482217, locationPlus: 101.1871765227411, ip: 70.1, xera: 5.641330752052745 },
+  { name: "Michael Lorenzen", team: "COL", stuffPlus: 87.82829007633589, locationPlus: 102.28413740458016, ip: 70.2, xera: 5.632876415894429 },
+  { name: "Luis Castillo", team: "SEA", stuffPlus: 98.35142958658794, locationPlus: 108.890953886019, ip: 70.2, xera: 4.605758353634236 },
+  { name: "Erick Fedde", team: "CHW", stuffPlus: 89.8432182085216, locationPlus: 106.687358885256, ip: 70.2, xera: 4.493381881569455 },
+  { name: "Zack Littell", team: "WSN", stuffPlus: 82.59662178521246, locationPlus: 99.08784342783372, ip: 71.0, xera: 6.639464415965768 },
+  { name: "Kyle Harrison", team: "MIL", stuffPlus: 105.82634946677608, locationPlus: 115.11381460213288, ip: 72.0, xera: 3.1970392399245258 },
+  { name: "Matthew Liberatore", team: "STL", stuffPlus: 98.10800978792815, locationPlus: 101.84530179445348, ip: 72.1, xera: 5.777936436615418 },
+  { name: "Walker Buehler", team: "SDP", stuffPlus: 96.02471744471742, locationPlus: 100.45552825552824, ip: 72.2, xera: 4.375608197499362 },
+  { name: "Dylan Cease", team: "TOR", stuffPlus: 107.54767787333851, locationPlus: 97.79207193119623, ip: 73.0, xera: 3.0307662136700477 },
+  { name: "Trevor Rogers", team: "BAL", stuffPlus: 100.8547291835085, locationPlus: 101.20776071139856, ip: 73.0, xera: 4.200365862585775 },
+  { name: "Shohei Ohtani", team: "LAD", stuffPlus: 112.83740511915268, locationPlus: 98.21661076787292, ip: 73.2, xera: 2.701366922447868 },
+  { name: "Keider Montero", team: "DET", stuffPlus: 93.59034077869588, locationPlus: 102.2499163569444, ip: 73.2, xera: 3.709490571689148 },
+  { name: "Miles Mikolas", team: "WSN", stuffPlus: 90.28146679787127, locationPlus: 111.38589625106478, ip: 74.0, xera: 4.749111855642263 },
+  { name: "Bubba Chandler", team: "PIT", stuffPlus: 104.7869658126625, locationPlus: 102.34514557022692, ip: 74.0, xera: 4.179681518160154 },
+  { name: "Noah Cameron", team: "KCR", stuffPlus: 95.5479006410256, locationPlus: 107.31169871794872, ip: 75.0, xera: 4.396703913862001 },
+  { name: "Logan Webb", team: "SFG", stuffPlus: 100.86853046594985, locationPlus: 106.98985663082432, ip: 75.1, xera: 3.7111307047297455 },
+  { name: "Aaron Nola", team: "PHI", stuffPlus: 106.18345752608047, locationPlus: 102.09201192250374, ip: 75.2, xera: 4.241275385758393 },
+  { name: "Ranger Suarez", team: "BOS", stuffPlus: 94.87200335289184, locationPlus: 104.84727577535628, ip: 76.2, xera: 3.3902082768391013 },
+  { name: "Taj Bradley", team: "MIN", stuffPlus: 108.00191536748326, locationPlus: 90.01205642167778, ip: 76.2, xera: 4.256485551718305 },
+  { name: "Andre Pallante", team: "STL", stuffPlus: 97.28443388756928, locationPlus: 102.96839271575612, ip: 76.2, xera: 3.6790812681150906 },
+  { name: "Cade Cavalli", team: "WSN", stuffPlus: 101.70406576980568, locationPlus: 95.04857997010464, ip: 77.1, xera: 4.49927435532914 },
+  { name: "Randy Vásquez", team: "SDP", stuffPlus: 98.39311844077956, locationPlus: 100.65442278860569, ip: 77.2, xera: 6.495734616914332 },
+  { name: "Slade Cecconi", team: "CLE", stuffPlus: 93.2063487099296, locationPlus: 101.68505082095383, ip: 78.1, xera: 4.408240716167839 },
+  { name: "Will Warren", team: "NYY", stuffPlus: 106.27127627627628, locationPlus: 105.98364864864864, ip: 78.1, xera: 3.851345682562288 },
+  { name: "Colin Rea", team: "CHC", stuffPlus: 94.316260948647, locationPlus: 98.95317279172966, ip: 79.1, xera: 5.533757021505206 },
+  { name: "Mike Burrows", team: "HOU", stuffPlus: 93.43184406549308, locationPlus: 98.4376728625772, ip: 79.1, xera: 4.642933733674356 },
+  { name: "Justin Wrobleski", team: "LAD", stuffPlus: 94.75628162598454, locationPlus: 110.73795941850932, ip: 79.1, xera: 4.195106244652035 },
+  { name: "Tomoyuki Sugano", team: "COL", stuffPlus: 80.20448062015501, locationPlus: 104.04803100775196, ip: 79.1, xera: 6.805552839477549 },
+  { name: "Robbie Ray", team: "SFG", stuffPlus: 96.8908395190401, locationPlus: 92.32099032741878, ip: 79.2, xera: 4.983508589293692 },
+  { name: "Zac Gallen", team: "ARI", stuffPlus: 87.112102637206, locationPlus: 109.88617248752676, ip: 79.2, xera: 5.686342270964069 },
+  { name: "Joey Cantillo", team: "CLE", stuffPlus: 98.66893772893772, locationPlus: 94.30950915750915, ip: 80.0, xera: 4.192021499382109 },
+  { name: "Drew Rasmussen", team: "TBR", stuffPlus: 107.2360923330585, locationPlus: 111.02460016488044, ip: 80.0, xera: 2.93490551863359 },
+  { name: "Jack Leiter", team: "TEX", stuffPlus: 102.09795128939837, locationPlus: 94.16663323782232, ip: 80.0, xera: 4.730941022060198 },
+  { name: "Landen Roupp", team: "SFG", stuffPlus: 99.16993026499304, locationPlus: 107.86125523012556, ip: 80.1, xera: 3.28053620344837 },
+  { name: "Ryan Weathers", team: "NYY", stuffPlus: 99.86403741231486, locationPlus: 109.85739672642246, ip: 80.2, xera: 4.184748779633743 },
+  { name: "Chase Burns", team: "CIN", stuffPlus: 113.50593798449611, locationPlus: 101.27826356589148, ip: 80.2, xera: 2.929558804248813 },
+  { name: "Kyle Bradish", team: "BAL", stuffPlus: 100.33299565846602, locationPlus: 98.85121562952244, ip: 81.0, xera: 4.100767680734162 },
+  { name: "Sean Burke", team: "CHW", stuffPlus: 97.68124871817632, locationPlus: 103.05861904638104, ip: 81.0, xera: 3.98250342710206 },
+  { name: "Dustin May", team: "STL", stuffPlus: 103.25889334402568, locationPlus: 102.13786688051324, ip: 81.2, xera: 3.39337923091125 },
+  { name: "Davis Martin", team: "CHW", stuffPlus: 90.63682868525896, locationPlus: 97.33576095617532, ip: 81.2, xera: 3.990574278756482 },
+  { name: "Connelly Early", team: "BOS", stuffPlus: 102.20576444769569, locationPlus: 95.98528163862473, ip: 81.2, xera: 4.38684030990689 },
+  { name: "Michael Soroka", team: "ARI", stuffPlus: 94.23009316770188, locationPlus: 106.77546583850936, ip: 82.0, xera: 3.9245047037011993 },
+  { name: "Mitch Keller", team: "PIT", stuffPlus: 92.6007067669173, locationPlus: 102.09148872180444, ip: 82.1, xera: 4.992714441092734 },
+  { name: "Jacob deGrom", team: "TEX", stuffPlus: 108.36946107784432, locationPlus: 110.00889221556886, ip: 82.2, xera: 3.5564705187997845 },
+  { name: "Jeffrey Springs", team: "ATH", stuffPlus: 97.35652609006434, locationPlus: 101.29213724088632, ip: 82.2, xera: 4.511752686400712 },
+  { name: "J.T. Ginn", team: "ATH", stuffPlus: 92.90598909269758, locationPlus: 102.07303058085184, ip: 82.2, xera: 3.840755438803991 },
+  { name: "Nick Martinez", team: "TBR", stuffPlus: 99.42262380538656, locationPlus: 104.55228496959168, ip: 83.0, xera: 4.49765383554971 },
+  { name: "Ryne Nelson", team: "ARI", stuffPlus: 105.27405323193916, locationPlus: 102.76118631178709, ip: 83.1, xera: 5.146743739266581 },
+  { name: "Michael McGreevy", team: "STL", stuffPlus: 81.22827376425853, locationPlus: 110.84276806083648, ip: 83.1, xera: 5.688649452326476 },
+  { name: "Nolan McLean", team: "NYM", stuffPlus: 107.68776183644196, locationPlus: 95.77173601147774, ip: 83.1, xera: 3.262722686628592 },
+  { name: "Framber Valdez", team: "DET", stuffPlus: 102.84272863568218, locationPlus: 98.87187406296852, ip: 83.2, xera: 4.482578219406939 },
+  { name: "Chris Sale", team: "ATL", stuffPlus: 116.61122494432072, locationPlus: 107.364573125464, ip: 84.0, xera: 3.4483064206656624 },
+  { name: "Foster Griffin", team: "WSN", stuffPlus: 97.9647076023392, locationPlus: 100.94980994152044, ip: 84.0, xera: 4.371435548138995 },
+  { name: "MacKenzie Gore", team: "TEX", stuffPlus: 98.49789181692095, locationPlus: 101.09948682385576, ip: 84.0, xera: 4.075514777018592 },
+  { name: "Andrew Abbott", team: "CIN", stuffPlus: 95.26841959972391, locationPlus: 100.9194064872326, ip: 84.2, xera: 4.849181090356305 },
+  { name: "Michael King", team: "SDP", stuffPlus: 95.76715636363636, locationPlus: 100.41946181818184, ip: 85.0, xera: 4.762208323038501 },
+  { name: "Emerson Hancock", team: "SEA", stuffPlus: 100.70575757575756, locationPlus: 107.26210606060604, ip: 85.0, xera: 4.550289142195966 },
+  { name: "Seth Lugo", team: "KCR", stuffPlus: 88.085468164794, locationPlus: 106.77138576779024, ip: 85.1, xera: 5.2046469851307 },
+  { name: "Freddy Peralta", team: "NYM", stuffPlus: 94.71567105263154, locationPlus: 105.8338815789474, ip: 85.2, xera: 3.849414467804805 },
+  { name: "Jesús Luzardo", team: "PHI", stuffPlus: 109.11971014492757, locationPlus: 103.06288474810212, ip: 85.2, xera: 3.33515635255636 },
+  { name: "Logan Gilbert", team: "SEA", stuffPlus: 106.85388690050112, locationPlus: 104.5124266284896, ip: 86.2, xera: 4.016400149230691 },
+  { name: "Parker Messick", team: "CLE", stuffPlus: 96.06707782672542, locationPlus: 105.72259911894268, ip: 86.2, xera: 3.332421957359181 },
+  { name: "Shota Imanaga", team: "CHC", stuffPlus: 92.6676112759644, locationPlus: 108.20497032640952, ip: 86.2, xera: 3.644991140894368 },
+  { name: "Nathan Eovaldi", team: "TEX", stuffPlus: 96.44397505845674, locationPlus: 106.65842556508184, ip: 87.1, xera: 4.431743264111845 },
+  { name: "Joe Ryan", team: "MIN", stuffPlus: 107.4343866943867, locationPlus: 107.75625779625776, ip: 87.1, xera: 3.1056211281714154 },
+  { name: "Reid Detmers", team: "LAA", stuffPlus: 104.64774193548386, locationPlus: 109.60223001402522, ip: 88.0, xera: 2.7772236988491783 },
+  { name: "Paul Skenes", team: "PIT", stuffPlus: 98.33349282296648, locationPlus: 110.70356801093642, ip: 88.0, xera: 2.6026648915137494 },
+  { name: "Eduardo Rodriguez", team: "ARI", stuffPlus: 90.2943406985032, locationPlus: 106.48370634354951, ip: 88.1, xera: 4.92613401123266 },
+  { name: "Bryce Elder", team: "ATL", stuffPlus: 85.34388544891642, locationPlus: 103.78729102167183, ip: 88.2, xera: 3.2468201111936947 },
+  { name: "Kevin Gausman", team: "TOR", stuffPlus: 97.4493096377307, locationPlus: 106.62691729323308, ip: 89.0, xera: 3.4791293435875685 },
+  { name: "Shane Baz", team: "BAL", stuffPlus: 98.62135922330098, locationPlus: 100.13062413314844, ip: 89.0, xera: 4.6212539709563885 },
+  { name: "Bryan Woo", team: "SEA", stuffPlus: 108.87618532818536, locationPlus: 108.26534362934366, ip: 89.0, xera: 3.2673796215390465 },
+  { name: "Tanner Bibee", team: "CLE", stuffPlus: 105.52823446327687, locationPlus: 100.5090960451978, ip: 89.1, xera: 4.5687812118661375 },
+  { name: "George Kirby", team: "SEA", stuffPlus: 101.48037086092714, locationPlus: 111.88271523178804, ip: 90.0, xera: 3.628423431938921 },
+  { name: "Max Meyer", team: "MIA", stuffPlus: 97.78661664392908, locationPlus: 105.98923601637108, ip: 90.0, xera: 3.819665795855248 },
+  { name: "Braxton Ashcraft", team: "PIT", stuffPlus: 104.59460317460324, locationPlus: 104.40172335600904, ip: 90.2, xera: 2.992226949085986 },
+  { name: "Gavin Williams", team: "CLE", stuffPlus: 104.1582791033984, locationPlus: 102.83901663051331, ip: 91.2, xera: 4.731729725199033 },
+  { name: "Yoshinobu Yamamoto", team: "LAD", stuffPlus: 102.66661775495234, locationPlus: 107.52020542920032, ip: 91.2, xera: 3.3409782631581595 },
+  { name: "José Soriano", team: "LAA", stuffPlus: 99.47000654022234, locationPlus: 103.71377370830616, ip: 92.0, xera: 4.194053624447582 },
+  { name: "Jacob Misiorowski", team: "MIL", stuffPlus: 125.3016126709863, locationPlus: 100.08197264218865, ip: 93.0, xera: 2.035274688980425 },
+  { name: "Michael Wacha", team: "KCR", stuffPlus: 96.77397501836884, locationPlus: 102.27803085966198, ip: 94.0, xera: 4.1383789692050605 },
+  { name: "Cam Schlittler", team: "NYY", stuffPlus: 110.71619179986104, locationPlus: 105.2881445448228, ip: 95.0, xera: 2.771997729428801 },
+  { name: "Sandy Alcantara", team: "MIA", stuffPlus: 101.76382257012388, locationPlus: 105.1235355512068, ip: 103.1, xera: 3.848027203089467 },
+  { name: "Cristopher Sánchez", team: "PHI", stuffPlus: 118.57930400525278, locationPlus: 99.211595535128, ip: 105.0, xera: 2.9566682776934123 }
+];
+
+/* ===========================================================================
+   3. ENGINE  ── shared across all charts. You should rarely edit below here.
+   =========================================================================== */
+const cv  = document.getElementById("scatter");
+const tip = document.getElementById("tip");
+
+// read a CSS token at the current theme (honors light/dark)
+function token(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// derive gap, category, and bubble radius once
+DATA.forEach(d => {
+  d._gap = d[CONFIG.y.key] - d[CONFIG.x.key];
+  d._cat = CONFIG.classify(d);
+  const f = CONFIG.bubble.field;
+  d._r = f ? Math.max(CONFIG.bubble.min, Math.sqrt(d[f]) * CONFIG.bubble.scale) : CONFIG.bubble.base;
+});
+
+// pick the points that get direct labels: largest absolute gap
+const labelSet = new Set(
+  [...DATA].sort((a, b) => Math.abs(b._gap) - Math.abs(a._gap))
+           .slice(0, CONFIG.labels.topN)
+           .map(d => d.name)
+);
+
+const chartData = DATA.map(d => ({
+  ...d,
+  x: d[CONFIG.x.key],
+  y: d[CONFIG.y.key],
+  r: d._r,
+  backgroundColor: token(CONFIG.categories[d._cat].fill),
+  borderColor:     token(CONFIG.categories[d._cat].line),
+  borderWidth: d._cat === "mid" ? 0.8 : 1.3
+}));
+
+// ---- reference geometry plugin (diagonal or cross) -----------------------
+const refPlugin = {
+  id: "ref",
+  afterDatasetsDraw(chart) {
+    const r = CONFIG.reference;
+    if (!r || r.type === "none") return;
+    const { ctx, chartArea: { left, right, top, bottom }, scales: { x, y } } = chart;
+    ctx.save();
+    ctx.strokeStyle = token("--ref-line");
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 4]);
+
+    if (r.type === "diagonal") {
+      const lo = Math.max(CONFIG.x.min, CONFIG.y.min);
+      const hi = Math.min(CONFIG.x.max, CONFIG.y.max);
+      ctx.beginPath();
+      ctx.moveTo(x.getPixelForValue(lo), y.getPixelForValue(lo));
+      ctx.lineTo(x.getPixelForValue(hi), y.getPixelForValue(hi));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (r.label) {
+        ctx.font = "10px -apple-system, sans-serif";
+        ctx.fillStyle = token("--ref-label");
+        ctx.textAlign = "right";
+        ctx.fillText(r.label, x.getPixelForValue(hi) - 4, y.getPixelForValue(hi) + 13);
+      }
+    } else if (r.type === "cross") {
+      const mx = x.getPixelForValue(r.crossX);
+      const my = y.getPixelForValue(r.crossY);
+      ctx.beginPath(); ctx.moveTo(mx, top); ctx.lineTo(mx, bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(left, my); ctx.lineTo(right, my); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = "500 10.5px -apple-system, sans-serif";
+      ctx.fillStyle = token("--ref-label");
+      const q = r.quadrants || {};
+      if (q.tr) { ctx.textAlign = "right"; ctx.fillText(q.tr, right - 6, top + 14); }
+      if (q.tl) { ctx.textAlign = "left";  ctx.fillText(q.tl, left + 6,  top + 14); }
+      if (q.br) { ctx.textAlign = "right"; ctx.fillText(q.br, right - 6, bottom - 8); }
+      if (q.bl) { ctx.textAlign = "left";  ctx.fillText(q.bl, left + 6,  bottom - 8); }
+    }
+    ctx.restore();
+  }
+};
+
+// ---- direct label plugin --------------------------------------------------
+const labelPlugin = {
+  id: "labels",
+  afterDatasetsDraw(chart) {
+    const { ctx, scales: { x, y } } = chart;
+    ctx.save();
+    ctx.font = "600 11px -apple-system, sans-serif";
+    chartData.forEach(d => {
+      if (!labelSet.has(d.name)) return;
+      const px = x.getPixelForValue(d.x);
+      const py = y.getPixelForValue(d.y);
+      const off = CONFIG.labels.offsets[d.name]
+        || (d._gap >= 0 ? { x: 7, y: -6 } : { x: 7, y: 14 });
+      ctx.fillStyle = token(CONFIG.categories[d._cat].line);
+      ctx.textAlign = off.x < 0 ? "right" : "left";
+      ctx.fillText(CONFIG.labels.shorten(d.name), px + off.x, py + off.y);
+    });
+    ctx.restore();
+  }
+};
+
+// ---- tooltip --------------------------------------------------------------
+function showTip(d, cx, cy) {
+  const t = CONFIG.tooltip(d);
+  const stats = t.stats.map(s =>
+    `<div class="tip-item"><label>${s.label}</label>` +
+    `<div class="tip-val"${s.color ? ` style="color:${s.color};"` : ""}>${s.val}</div></div>`
+  ).join("");
+  tip.innerHTML =
+    `<div class="tip-name">${t.name} <span class="tip-team">(${t.team})</span></div>` +
+    `<div class="tip-grid">${stats}</div>` +
+    (t.sub ? `<div class="tip-sub">${t.sub}</div>` : "");
+  const tw = 220, th = 96;
+  let lx = cx + 14, ty = cy - 10;
+  if (lx + tw > window.innerWidth - 10) lx = cx - tw - 14;
+  if (ty + th > window.innerHeight - 10) ty = cy - th;
+  if (ty < 8) ty = 8;
+  tip.style.left = lx + "px";
+  tip.style.top = ty + "px";
+  tip.style.display = "block";
+}
+
+// ---- build legend from categories ----------------------------------------
+(function buildLegend() {
+  const el = document.getElementById("legend");
+  el.innerHTML = Object.values(CONFIG.categories).map(c =>
+    `<div class="legend-item"><span class="legend-dot" style="background:${token(c.fill)};"></span>${c.label}</div>`
+  ).join("");
+  if (CONFIG.bubble.field) {
+    el.innerHTML += `<div class="legend-item"><span class="legend-dot" style="background:var(--c-mid-fill);border:1px solid var(--c-mid-line);"></span>bubble = ${CONFIG.bubble.field}</div>`;
+  }
+})();
+
+document.getElementById("chartTitle").textContent = CONFIG.title;
+document.getElementById("chartSub").textContent   = CONFIG.subtitle;
+
+// ---- chart ----------------------------------------------------------------
+const chart = new Chart(cv, {
+  type: "bubble",
+  data: { datasets: [{
+    data: chartData,
+    backgroundColor: chartData.map(d => d.backgroundColor),
+    borderColor:     chartData.map(d => d.borderColor),
+    borderWidth:     chartData.map(d => d.borderWidth)
+  }]},
+  options: {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    layout: { padding: { top: 20, right: 70, bottom: 10, left: 10 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: false,
+        external({ chart, tooltip }) {
+          if (!tooltip.dataPoints?.length) { tip.style.display = "none"; return; }
+          const d = tooltip.dataPoints[0].raw;
+          const rect = chart.canvas.getBoundingClientRect();
+          showTip(d, rect.left + tooltip.caretX, rect.top + tooltip.caretY);
+        }
+      }
+    },
+    scales: {
+      x: { min: CONFIG.x.min, max: CONFIG.x.max,
+           title: { display: true, text: CONFIG.x.label },
+           ticks: { callback: v => CONFIG.x.fmt(v) } },
+      y: { min: CONFIG.y.min, max: CONFIG.y.max,
+           title: { display: true, text: CONFIG.y.label },
+           ticks: { callback: v => CONFIG.y.fmt(v) } }
+    }
+  },
+  plugins: [refPlugin, labelPlugin]
+});
+
+// ---- theming for the canvas chrome (grid, ticks, titles) ------------------
+// reads the same tokens the CSS uses, so light and dark stay in sync.
+function applyTheme() {
+  const grid = token("--grid"), txt = token("--text-secondary");
+  ["x", "y"].forEach(ax => {
+    chart.options.scales[ax].grid.color  = grid;
+    chart.options.scales[ax].ticks.color = txt;
+    chart.options.scales[ax].title.color = txt;
+    chart.options.scales[ax].ticks.font  = { size: 11 };
+    chart.options.scales[ax].title.font  = { size: 11 };
+  });
+  // refresh point colors too, in case the theme swapped category hues
+  chart.data.datasets[0].backgroundColor = chartData.map(d => token(CONFIG.categories[d._cat].fill));
+  chart.data.datasets[0].borderColor     = chartData.map(d => token(CONFIG.categories[d._cat].line));
+  chart.update("none");
+}
+applyTheme();
+
+// live update if the OS theme flips while the chart is open
+const mq = matchMedia("(prefers-color-scheme: dark)");
+mq.addEventListener?.("change", () => {
+  chartData.forEach(d => {
+    d.backgroundColor = token(CONFIG.categories[d._cat].fill);
+    d.borderColor     = token(CONFIG.categories[d._cat].line);
+  });
+  document.getElementById("legend").querySelectorAll(".legend-dot").forEach((dot, i) => {
+    const cats = Object.values(CONFIG.categories);
+    if (cats[i]) dot.style.background = token(cats[i].fill);
+  });
+  applyTheme();
+});
+
+// ---- interaction: mouse leave + touch ------------------------------------
+cv.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+cv.addEventListener("touchstart", e => {
+  const pts = chart.getElementsAtEventForMode(e, "nearest", { radius: 20 }, true);
+  if (pts.length) {
+    e.preventDefault();
+    const t = e.touches[0];
+    showTip(chartData[pts[0].index], t.clientX, t.clientY);
+  } else {
+    tip.style.display = "none";
+  }
+}, { passive: false });
+</script>
+</body>
+</html>
