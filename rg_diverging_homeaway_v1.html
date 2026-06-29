@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RG Diverging Base</title>
+<style>
+  :root {
+    --bg:#ffffff; --text-primary:#1a1916; --text-secondary:#6b6860;
+    --grid:rgba(0,0,0,0.07); --center:rgba(0,0,0,0.40);
+    --home:#1d9e75; --home-line:#0a7050; --away:#c0399e; --away-line:#92256f;
+    --tip-bg:#ffffff; --tip-border:#e0ddd4; --tip-shadow:rgba(0,0,0,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#15140f; --text-primary:#e8e6df; --text-secondary:#a39a8c;
+      --grid:rgba(255,255,255,0.09); --center:rgba(255,255,255,0.42);
+      --home:#41c598; --home-line:#6fdcb8; --away:#d76bb9; --away-line:#e79fd2;
+      --tip-bg:#1f1e18; --tip-border:rgba(255,255,255,0.14); --tip-shadow:rgba(0,0,0,0.5);
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text-primary);padding:16px 14px 10px;}
+  .chart-title{font-size:15px;font-weight:600;margin-bottom:3px;}
+  .chart-sub{font-size:11.5px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;}
+  #wrap{position:relative;width:100%;}
+  svg{display:block;width:100%;height:auto;}
+  .row-hit{cursor:pointer;}
+  .name{font-size:11.5px;fill:var(--text-primary);}
+  .val{font-size:10.5px;font-weight:700;}
+  .axis{font-size:10px;fill:var(--text-secondary);}
+  .head{font-size:11px;font-weight:600;}
+  #tip{display:none;position:fixed;z-index:9999;pointer-events:none;min-width:215px;padding:10px 13px;
+    background:var(--tip-bg);color:var(--text-primary);border:1px solid var(--tip-border);border-radius:7px;
+    box-shadow:0 4px 16px var(--tip-shadow);font-size:12px;}
+  .tip-name{font-size:13px;font-weight:600;margin-bottom:6px;}
+  .tip-team{font-weight:400;color:var(--text-secondary);}
+  .tip-r{display:flex;justify-content:space-between;gap:18px;margin:2px 0;}
+  .tip-r .lab{color:var(--text-secondary);}
+  .tip-div{height:1px;background:var(--tip-border);margin:6px 0;}
+</style>
+</head>
+<body>
+<p class="chart-title" id="t"></p>
+<p class="chart-sub" id="s"></p>
+<div id="wrap"><div id="tip"></div></div>
+
+<script>
+const CONFIG = {
+  title: "Home vs Away FIP splits, 2026 starters",
+  subtitle: "Bars left = better at home (stream) \u00b7 bars right = better away (sit at home) \u00b7 length is the FIP gap \u00b7 min 25 IP each side \u00b7 hover or tap for detail",
+  maxGap: 4.0
+};
+const DATA = [{"name": "Jack Flaherty", "team": "DET", "ipH": 35.1, "fipH": 2.62, "ipA": 30.1, "fipA": 5.81, "kH": 30.5, "kA": 20.4, "bbH": 8.4, "bbA": 13.8, "hrH": 0.51, "hrA": 1.78, "gap": 3.18}, {"name": "Anthony Kay", "team": "CHW", "ipH": 37.0, "fipH": 3.51, "ipA": 32.1, "fipA": 6.54, "kH": 21.1, "kA": 18.4, "bbH": 6.8, "bbA": 10.5, "hrH": 0.49, "hrA": 2.23, "gap": 3.03}, {"name": "Colin Rea", "team": "CHC", "ipH": 35.0, "fipH": 3.59, "ipA": 27.1, "fipA": 6.61, "kH": 18.1, "kA": 13.8, "bbH": 6.9, "bbA": 10.8, "hrH": 0.77, "hrA": 1.98, "gap": 3.03}, {"name": "Zac Gallen", "team": "ARI", "ipH": 41.0, "fipH": 3.79, "ipA": 38.2, "fipA": 6.23, "kH": 14.8, "kA": 13.8, "bbH": 4.9, "bbA": 8.8, "hrH": 0.88, "hrA": 2.09, "gap": 2.45}, {"name": "Bryan Woo", "team": "SEA", "ipH": 45.0, "fipH": 1.9, "ipA": 44.0, "fipA": 4.28, "kH": 31.5, "kA": 19.0, "bbH": 4.2, "bbA": 4.8, "hrH": 0.4, "hrA": 1.43, "gap": 2.38}, {"name": "Kyle Leahy", "team": "STL", "ipH": 41.0, "fipH": 3.2, "ipA": 35.1, "fipA": 5.51, "kH": 14.0, "kA": 23.1, "bbH": 8.4, "bbA": 8.1, "hrH": 0.0, "hrA": 2.29, "gap": 2.31}, {"name": "Jacob deGrom", "team": "TEX", "ipH": 41.2, "fipH": 2.74, "ipA": 41.0, "fipA": 4.76, "kH": 32.7, "kA": 26.6, "bbH": 5.0, "bbA": 5.8, "hrH": 1.08, "hrA": 2.2, "gap": 2.02}, {"name": "Walbert Urena", "team": "LAA", "ipH": 39.0, "fipH": 3.1, "ipA": 26.2, "fipA": 5.05, "kH": 25.3, "kA": 18.3, "bbH": 13.0, "bbA": 9.6, "hrH": 0.23, "hrA": 1.35, "gap": 1.95}, {"name": "Luis Severino", "team": "ATH", "ipH": 25.1, "fipH": 6.18, "ipA": 37.1, "fipA": 3.32, "kH": 23.0, "kA": 24.7, "bbH": 9.7, "bbA": 12.7, "hrH": 2.49, "hrA": 0.48, "gap": -2.86}, {"name": "Logan Gilbert", "team": "SEA", "ipH": 58.1, "fipH": 4.75, "ipA": 34.2, "fipA": 2.15, "kH": 27.8, "kA": 26.1, "bbH": 6.4, "bbA": 5.2, "hrH": 2.01, "hrA": 0.26, "gap": -2.6}, {"name": "Jesus Luzardo", "team": "PHI", "ipH": 45.0, "fipH": 4.24, "ipA": 47.1, "fipA": 2.07, "kH": 25.4, "kA": 30.7, "bbH": 7.3, "bbA": 8.0, "hrH": 1.6, "hrA": 0.19, "gap": -2.17}, {"name": "Trevor Rogers", "team": "BAL", "ipH": 45.2, "fipH": 4.92, "ipA": 27.1, "fipA": 3.14, "kH": 15.7, "kA": 19.8, "bbH": 8.6, "bbA": 6.0, "hrH": 1.38, "hrA": 0.66, "gap": -1.78}, {"name": "Merrill Kelly", "team": "ARI", "ipH": 27.2, "fipH": 6.86, "ipA": 48.0, "fipA": 5.23, "kH": 17.7, "kA": 10.2, "bbH": 7.7, "bbA": 10.2, "hrH": 2.93, "hrA": 1.12, "gap": -1.63}, {"name": "Foster Griffin", "team": "WSN", "ipH": 40.1, "fipH": 5.28, "ipA": 51.0, "fipA": 3.73, "kH": 21.8, "kA": 25.5, "bbH": 7.1, "bbA": 5.4, "hrH": 2.01, "hrA": 1.24, "gap": -1.55}, {"name": "Framber Valdez", "team": "DET", "ipH": 37.0, "fipH": 5.02, "ipA": 52.2, "fipA": 3.52, "kH": 16.5, "kA": 21.1, "bbH": 9.1, "bbA": 8.4, "hrH": 1.22, "hrA": 0.68, "gap": -1.5}, {"name": "Brandon Sproat", "team": "MIL", "ipH": 27.0, "fipH": 5.81, "ipA": 35.1, "fipA": 4.43, "kH": 27.3, "kA": 23.2, "bbH": 12.4, "bbA": 7.7, "hrH": 2.33, "hrA": 1.27, "gap": -1.37}];
+
+// sort: biggest home advantage (gap+) at padTop -> biggest away advantage (gap-) at bottom
+DATA.sort((a,b)=>b.gap-a.gap);
+
+const W=720, NAME=150, CX=420, half=250, rowH=26, padTop=52, bot=20;
+const H = padTop + DATA.length*rowH + bot;
+const NS='http://www.w3.org/2000/svg';
+function el(n,a){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;}
+const xg = g => CX + (g/CONFIG.maxGap)*half;   // gap -> x ; +gap (home) goes RIGHT of center? we want home LEFT
+// home advantage should read LEFT, so invert: positive gap -> left
+const xpos = g => CX - (g/CONFIG.maxGap)*half;
+
+const tip=document.getElementById('tip');
+const wrap=tip.parentNode;
+document.getElementById('t').textContent=CONFIG.title;
+document.getElementById('s').textContent=CONFIG.subtitle;
+const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img'});
+
+// side headers
+const hL=el('text',{x:CX-half,y:34,'text-anchor':'start',class:'head',fill:'var(--home-line)'});hL.textContent='\u25c0 Better at home';svg.appendChild(hL);
+const hR=el('text',{x:CX+half,y:34,'text-anchor':'end',class:'head',fill:'var(--away-line)'});hR.textContent='Better away \u25b6';svg.appendChild(hR);
+
+// gap gridlines at 1,2,3 each side
+for(let v=1; v<=3; v++){
+  for(const s of [-1,1]){
+    const x=CX + s*(v/CONFIG.maxGap)*half;
+    svg.appendChild(el('line',{x1:x,y1:padTop-6,x2:x,y2:padTop+DATA.length*rowH,stroke:'var(--grid)','stroke-width':1}));
+    const tx=el('text',{x:x,y:padTop+DATA.length*rowH+15,'text-anchor':'middle',class:'axis'});tx.textContent=v;svg.appendChild(tx);
+  }
+}
+// center line
+svg.appendChild(el('line',{x1:CX,y1:padTop-6,x2:CX,y2:padTop+DATA.length*rowH,stroke:'var(--center)','stroke-width':1.5}));
+const c0=el('text',{x:CX,y:padTop+DATA.length*rowH+15,'text-anchor':'middle',class:'axis'});c0.textContent='0';svg.appendChild(c0);
+const cax=el('text',{x:CX,y:padTop+DATA.length*rowH+27,'text-anchor':'middle',class:'axis'});cax.textContent='FIP gap';svg.appendChild(cax);
+
+DATA.forEach((d,i)=>{
+  const y=padTop+i*rowH+rowH/2;
+  const home=d.gap>=0;
+  const x=xpos(d.gap);
+  const g=el('g',{class:'row-hit'}); g.dataset.i=i;
+  g.appendChild(el('rect',{x:0,y:y-rowH/2,width:W,height:rowH,fill:'transparent'}));
+  // bar from center to x
+  const x1=Math.min(CX,x), x2=Math.max(CX,x);
+  g.appendChild(el('rect',{x:x1,y:y-5,width:x2-x1,height:10,rx:2,
+    fill:home?'var(--home)':'var(--away)'}));
+  // name (always far left)
+  const nm=el('text',{x:NAME-8,y:y+4,'text-anchor':'end',class:'name'});nm.textContent=d.name;g.appendChild(nm);
+  // gap value at bar end
+  const lab=el('text',{x:home?x-6:x+6,y:y+4,'text-anchor':home?'end':'start',class:'val',
+    fill:home?'var(--home-line)':'var(--away-line)'});
+  lab.textContent=(d.gap>=0?'+':'')+d.gap.toFixed(2);g.appendChild(lab);
+  svg.appendChild(g);
+});
+wrap.insertBefore(svg,tip);
+
+function showTip(d,cx,cy){
+  tip.innerHTML =
+    `<div class="tip-name">${d.name} <span class="tip-team">(${d.team})</span></div>`+
+    `<div class="tip-r"><span class="lab">Home FIP</span><span style="font-weight:700;">${d.fipH.toFixed(2)} <span style="color:var(--text-secondary);font-weight:400;">(${d.ipH} IP)</span></span></div>`+
+    `<div class="tip-r"><span class="lab">Away FIP</span><span style="font-weight:700;">${d.fipA.toFixed(2)} <span style="color:var(--text-secondary);font-weight:400;">(${d.ipA} IP)</span></span></div>`+
+    `<div class="tip-div"></div>`+
+    `<div class="tip-r"><span class="lab">K% h/a</span><span>${d.kH} / ${d.kA}</span></div>`+
+    `<div class="tip-r"><span class="lab">BB% h/a</span><span>${d.bbH} / ${d.bbA}</span></div>`+
+    `<div class="tip-r"><span class="lab">HR/9 h/a</span><span>${d.hrH} / ${d.hrA}</span></div>`+
+    `<div class="tip-r"><span class="lab">split</span><span style="font-weight:700;color:${d.gap>=0?'var(--home-line)':'var(--away-line)'};">${(d.gap>=0?'+':'')+d.gap.toFixed(2)} ${d.gap>=0?'home':'away'}</span></div>`;
+  const tw=235,th=185;let lx=cx+14,ty=cy-10;
+  if(lx+tw>window.innerWidth-10)lx=cx-tw-14;
+  if(ty+th>window.innerHeight-10)ty=window.innerHeight-th-10;
+  if(ty<8)ty=8;
+  tip.style.left=lx+'px';tip.style.top=ty+'px';tip.style.display='block';
+}
+svg.querySelectorAll('.row-hit').forEach(g=>{
+  g.addEventListener('mousemove',e=>showTip(DATA[+g.dataset.i],e.clientX,e.clientY));
+  g.addEventListener('mouseleave',()=>tip.style.display='none');
+  g.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];showTip(DATA[+g.dataset.i],t.clientX,t.clientY);},{passive:false});
+});
+document.addEventListener('touchstart',e=>{if(!e.target.closest('.row-hit'))tip.style.display='none';},{passive:true});
+</script>
+</body>
+</html>
