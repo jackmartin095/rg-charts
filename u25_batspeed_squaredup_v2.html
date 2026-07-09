@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>U25 Bat Speed vs Squared-Up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --ink: #14181c;
+    --ink-soft: #5b6670;
+    --grid: #e6e9ec;
+    --axis: #b3bac0;
+    --quad-line: #c2c8ce;
+    --quad-label: #9aa2a9;
+    --tip-bg: #14181c;
+    --tip-ink: #ffffff;
+    --tip-soft: #9aa2a9;
+    --dot-stroke: rgba(20,24,28,0.35);
+    --highlight-stroke: #14181c;
+    /* chase gradient: low chase (good) = cool, high chase (bad) = warm */
+    --c-good: #2f6f9e;
+    --c-mid: #d8d2c4;
+    --c-bad: #c9503c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181c;
+      --panel: #14181c;
+      --ink: #f2f4f6;
+      --ink-soft: #9aa2a9;
+      --grid: #262d33;
+      --axis: #3a434b;
+      --quad-line: #333c43;
+      --quad-label: #5b6670;
+      --tip-bg: #0b0e10;
+      --tip-ink: #f2f4f6;
+      --tip-soft: #7a838b;
+      --dot-stroke: rgba(242,244,246,0.35);
+      --highlight-stroke: #f2f4f6;
+      --c-good: #4a97cf;
+      --c-mid: #6b6a62;
+      --c-bad: #e0654e;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Space Grotesk", system-ui, sans-serif;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 12px; }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--ink-soft); margin: 0 0 6px;
+  }
+  h1 {
+    font-size: 20px; font-weight: 700; line-height: 1.25;
+    margin: 0 0 6px; letter-spacing: -0.01em;
+  }
+  .sub {
+    font-size: 13px; line-height: 1.45; color: var(--ink-soft);
+    margin: 0 0 14px; max-width: 62ch;
+  }
+  .chart-box { position: relative; width: 100%; height: 460px; }
+  @media (max-width: 520px) { .chart-box { height: 380px; } h1 { font-size: 18px; } }
+  .legend {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+    margin: 12px 0 2px; font-size: 11.5px; color: var(--ink-soft);
+  }
+  .legend .ramp {
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .ramp-bar {
+    width: 96px; height: 9px; border-radius: 5px;
+    background: linear-gradient(90deg, var(--c-good), var(--c-mid), var(--c-bad));
+  }
+  .ramp-cap { font-family: "Space Mono", monospace; font-size: 10.5px; }
+  .foot {
+    font-size: 10.5px; color: var(--ink-soft); margin: 10px 0 0;
+    display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .foot a { color: inherit; text-decoration: none; border-bottom: 1px solid var(--grid); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Bat tracking / hitters 24 and under</p>
+  <h1>U25 bat speed and squared-up rate</h1>
+  <p class="sub">Every qualified hitter 24 and under. Horizontal is average bat speed. Vertical is squared-up rate, how often the swing produces flush contact. Colour is chase rate. Dashed lines mark the U25 median on each axis, so a dot's quadrant is its standing within this group, not a league baseline.</p>
+  <div class="chart-box"><canvas id="c"></canvas></div>
+  <div class="legend">
+    <span class="ramp">
+      <span class="ramp-cap">Low chase</span>
+      <span class="ramp-bar"></span>
+      <span class="ramp-cap">High chase</span>
+    </span>
+    <span>Colour is chase rate, cool low to warm high</span>
+  </div>
+  <p class="foot">
+    <span>Data: FanGraphs / Statcast bat tracking, min PA applied</span>
+    <span>@jack_mariners</span>
+  </p>
+</div>
+<script>
+const DATA = [{"n":"Junior Caminero","t":"TBR","a":22,"x":79.93,"y":31.2,"os":31.6,"zc":88.4,"sw":8.7,"sl":8.6,"fs":88.0,"bl":25.6,"pa":393,"wrc":147},{"n":"James Wood","t":"WSN","a":23,"x":76.7,"y":33.4,"os":24.4,"zc":84.3,"sw":11.0,"sl":7.4,"fs":67.1,"bl":23.6,"pa":440,"wrc":156},{"n":"Jordan Walker","t":"STL","a":24,"x":79.12,"y":30.3,"os":38.2,"zc":82.2,"sw":14.7,"sl":8.3,"fs":85.7,"bl":23.3,"pa":380,"wrc":143},{"n":"Jac Caglianone","t":"KCR","a":23,"x":77.26,"y":30.0,"os":38.4,"zc":83.8,"sw":14.9,"sl":7.9,"fs":74.7,"bl":23.2,"pa":333,"wrc":113},{"n":"Esmerlyn Valdez","t":"PIT","a":22,"x":74.85,"y":29.7,"os":29.1,"zc":72.5,"sw":15.8,"sl":7.9,"fs":48.6,"bl":23.1,"pa":87,"wrc":157},{"n":"Nick Kurtz","t":"ATH","a":23,"x":78.32,"y":27.4,"os":24.5,"zc":77.7,"sw":13.9,"sl":7.8,"fs":81.6,"bl":22.7,"pa":408,"wrc":151},{"n":"Elly De La Cruz","t":"CIN","a":24,"x":74.94,"y":33.9,"os":29.8,"zc":83.6,"sw":11.5,"sl":7.1,"fs":49.6,"bl":22.6,"pa":321,"wrc":124},{"n":"Henry Bolte","t":"ATH","a":22,"x":76.81,"y":31.1,"os":33.1,"zc":80.9,"sw":15.9,"sl":7.8,"fs":72.6,"bl":21.9,"pa":190,"wrc":110},{"n":"Roman Anthony","t":"BOS","a":22,"x":75.6,"y":35.9,"os":23.5,"zc":84.7,"sw":9.5,"sl":7.5,"fs":54.0,"bl":20.3,"pa":130,"wrc":92},{"n":"Francisco Alvarez","t":"NYM","a":24,"x":74.16,"y":31.8,"os":35.4,"zc":81.9,"sw":14.1,"sl":7.2,"fs":44.1,"bl":19.5,"pa":220,"wrc":107},{"n":"Pedro Ramirez","t":"CHC","a":22,"x":72.62,"y":37.2,"os":37.3,"zc":93.1,"sw":8.4,"sl":7.4,"fs":24.4,"bl":19.2,"pa":61,"wrc":83},{"n":"Bryce Eldridge","t":"SFG","a":21,"x":73.71,"y":30.6,"os":30.0,"zc":86.3,"sw":9.7,"sl":7.5,"fs":33.6,"bl":19.2,"pa":200,"wrc":125},{"n":"Samuel Basallo","t":"BAL","a":21,"x":74.71,"y":31.8,"os":43.0,"zc":85.3,"sw":15.1,"sl":7.6,"fs":48.2,"bl":18.6,"pa":285,"wrc":113},{"n":"Luisangel Acuna","t":"CHW","a":24,"x":72.17,"y":39.3,"os":35.8,"zc":89.8,"sw":11.7,"sl":7.5,"fs":28.5,"bl":18.5,"pa":156,"wrc":47},{"n":"Chase DeLauter","t":"CLE","a":24,"x":71.5,"y":38.3,"os":23.6,"zc":93.0,"sw":5.9,"sl":7.1,"fs":18.5,"bl":18.4,"pa":315,"wrc":118},{"n":"Moises Ballesteros","t":"CHC","a":22,"x":73.32,"y":35.3,"os":37.1,"zc":85.5,"sw":11.8,"sl":7.2,"fs":40.1,"bl":18.3,"pa":175,"wrc":91},{"n":"Jackson Chourio","t":"MIL","a":22,"x":74.96,"y":32.4,"os":34.5,"zc":91.1,"sw":9.7,"sl":7.4,"fs":51.7,"bl":18.2,"pa":267,"wrc":128},{"n":"Colt Keith","t":"DET","a":24,"x":72.04,"y":41.0,"os":26.5,"zc":86.6,"sw":8.6,"sl":6.8,"fs":20.3,"bl":18.0,"pa":262,"wrc":90},{"n":"Dylan Crews","t":"WSN","a":24,"x":73.62,"y":34.1,"os":40.4,"zc":84.0,"sw":14.5,"sl":7.6,"fs":33.1,"bl":18.0,"pa":177,"wrc":78},{"n":"Nick Yorke","t":"PIT","a":24,"x":72.36,"y":32.5,"os":32.8,"zc":91.2,"sw":8.0,"sl":7.3,"fs":19.3,"bl":17.9,"pa":86,"wrc":55},{"n":"Cam Smith","t":"HOU","a":23,"x":77.34,"y":27.0,"os":31.5,"zc":84.9,"sw":12.7,"sl":7.7,"fs":75.6,"bl":17.6,"pa":352,"wrc":88},{"n":"Owen Caissie","t":"MIA","a":23,"x":74.92,"y":29.0,"os":31.7,"zc":79.2,"sw":15.5,"sl":7.1,"fs":53.8,"bl":17.6,"pa":246,"wrc":100},{"n":"Tyler Soderstrom","t":"ATH","a":24,"x":74.48,"y":30.6,"os":28.4,"zc":88.9,"sw":9.2,"sl":7.5,"fs":45.2,"bl":17.5,"pa":339,"wrc":120},{"n":"Cooper Pratt","t":"MIL","a":21,"x":70.32,"y":37.5,"os":28.5,"zc":88.3,"sw":9.7,"sl":7.1,"fs":10.2,"bl":17.5,"pa":77,"wrc":89},{"n":"Pete Crow-Armstrong","t":"CHC","a":24,"x":74.8,"y":28.5,"os":37.4,"zc":86.5,"sw":13.1,"sl":7.4,"fs":50.6,"bl":17.4,"pa":400,"wrc":154},{"n":"Yohendrick Pinango","t":"TOR","a":24,"x":75.66,"y":26.5,"os":38.1,"zc":82.1,"sw":11.5,"sl":7.2,"fs":57.7,"bl":17.2,"pa":160,"wrc":103},{"n":"Colson Montgomery","t":"CHW","a":24,"x":76.24,"y":24.4,"os":36.5,"zc":83.4,"sw":17.6,"sl":7.9,"fs":66.3,"bl":16.7,"pa":364,"wrc":113},{"n":"Max Muncy","t":"ATH","a":23,"x":74.49,"y":26.2,"os":38.1,"zc":84.6,"sw":15.1,"sl":7.6,"fs":49.6,"bl":16.4,"pa":175,"wrc":91},{"n":"Joe Mack","t":"MIA","a":23,"x":74.48,"y":28.4,"os":27.5,"zc":86.7,"sw":9.5,"sl":7.4,"fs":46.2,"bl":16.2,"pa":163,"wrc":97},{"n":"Sal Stewart","t":"CIN","a":22,"x":72.55,"y":32.3,"os":30.4,"zc":82.3,"sw":11.2,"sl":7.6,"fs":29.0,"bl":16.1,"pa":396,"wrc":118},{"n":"Blaze Jordan","t":"STL","a":23,"x":72.96,"y":36.8,"os":35.8,"zc":89.1,"sw":9.3,"sl":7.3,"fs":34.6,"bl":16.0,"pa":77,"wrc":56},{"n":"Coby Mayo","t":"BAL","a":24,"x":75.59,"y":27.4,"os":34.2,"zc":85.5,"sw":13.6,"sl":7.4,"fs":56.7,"bl":16.0,"pa":241,"wrc":81},{"n":"Carter Jensen","t":"KCR","a":22,"x":73.94,"y":33.3,"os":27.7,"zc":86.0,"sw":11.7,"sl":7.1,"fs":38.6,"bl":15.9,"pa":332,"wrc":104},{"n":"Wyatt Langford","t":"TEX","a":24,"x":72.84,"y":35.9,"os":30.7,"zc":88.6,"sw":9.8,"sl":6.9,"fs":25.6,"bl":15.5,"pa":173,"wrc":129},{"n":"Sean Keys","t":"TOR","a":23,"x":74.75,"y":28.2,"os":35.6,"zc":82.1,"sw":15.9,"sl":7.4,"fs":47.5,"bl":15.4,"pa":29,"wrc":46},{"n":"LuJames Groover","t":"ARI","a":24,"x":71.06,"y":42.4,"os":23.6,"zc":95.2,"sw":6.2,"sl":6.9,"fs":10.4,"bl":15.2,"pa":54,"wrc":49},{"n":"Konnor Griffin","t":"PIT","a":20,"x":75.65,"y":25.3,"os":40.4,"zc":83.3,"sw":15.4,"sl":7.7,"fs":57.5,"bl":14.6,"pa":247,"wrc":101},{"n":"Brady House","t":"WSN","a":23,"x":73.49,"y":28.6,"os":35.8,"zc":78.9,"sw":15.9,"sl":7.6,"fs":31.4,"bl":14.6,"pa":177,"wrc":85},{"n":"Agustin Ramirez","t":"MIA","a":24,"x":75.92,"y":27.0,"os":30.7,"zc":81.7,"sw":14.4,"sl":7.6,"fs":60.6,"bl":14.5,"pa":129,"wrc":83},{"n":"Kahlil Watson","t":"CLE","a":23,"x":73.06,"y":30.3,"os":38.9,"zc":82.2,"sw":15.9,"sl":7.7,"fs":27.4,"bl":14.5,"pa":66,"wrc":59},{"n":"Brice Matthews","t":"HOU","a":24,"x":72.97,"y":29.8,"os":27.4,"zc":77.7,"sw":15.4,"sl":7.3,"fs":28.8,"bl":14.5,"pa":223,"wrc":63},{"n":"Joshua Kuroda-Grauer","t":"ATH","a":23,"x":67.99,"y":36.7,"os":38.6,"zc":100.0,"sw":3.5,"sl":6.9,"fs":6.0,"bl":14.3,"pa":31,"wrc":218},{"n":"Jasson Dominguez","t":"NYY","a":23,"x":74.03,"y":27.6,"os":40.9,"zc":86.7,"sw":13.2,"sl":7.7,"fs":34.1,"bl":14.1,"pa":123,"wrc":81},{"n":"Carson Benge","t":"NYM","a":23,"x":71.13,"y":33.3,"os":30.1,"zc":88.4,"sw":8.8,"sl":6.5,"fs":18.2,"bl":14.1,"pa":370,"wrc":107},{"n":"Kyle Teel","t":"CHW","a":24,"x":72.9,"y":28.1,"os":33.3,"zc":81.8,"sw":17.3,"sl":6.9,"fs":35.2,"bl":14.0,"pa":52,"wrc":71},{"n":"A.J. Ewing","t":"NYM","a":21,"x":70.54,"y":31.9,"os":28.4,"zc":86.1,"sw":9.4,"sl":6.5,"fs":11.9,"bl":13.9,"pa":205,"wrc":128},{"n":"Jose Fernandez","t":"ARI","a":22,"x":74.35,"y":29.2,"os":38.6,"zc":86.9,"sw":10.8,"sl":7.8,"fs":45.9,"bl":13.9,"pa":177,"wrc":75},{"n":"JJ Wetherholt","t":"STL","a":23,"x":72.45,"y":36.2,"os":25.9,"zc":87.6,"sw":7.8,"sl":7.6,"fs":22.6,"bl":13.8,"pa":391,"wrc":115},{"n":"Dylan Beavers","t":"BAL","a":24,"x":71.84,"y":29.8,"os":24.6,"zc":87.6,"sw":8.8,"sl":7.3,"fs":16.1,"bl":13.5,"pa":140,"wrc":91},{"n":"Masyn Winn","t":"STL","a":24,"x":70.88,"y":34.3,"os":27.1,"zc":88.3,"sw":8.2,"sl":7.3,"fs":13.0,"bl":13.4,"pa":343,"wrc":87},{"n":"Jackson Merrill","t":"SDP","a":23,"x":73.49,"y":26.5,"os":38.6,"zc":85.1,"sw":13.4,"sl":7.6,"fs":31.2,"bl":13.0,"pa":374,"wrc":75},{"n":"Braden Montgomery","t":"CHW","a":23,"x":69.87,"y":30.1,"os":30.1,"zc":85.9,"sw":13.1,"sl":6.6,"fs":9.8,"bl":13.0,"pa":100,"wrc":90},{"n":"Ryan Waldschmidt","t":"ARI","a":23,"x":72.42,"y":31.0,"os":27.6,"zc":86.3,"sw":13.2,"sl":7.0,"fs":18.1,"bl":12.9,"pa":122,"wrc":85},{"n":"Tommy Troy","t":"ARI","a":24,"x":71.98,"y":27.9,"os":28.3,"zc":81.6,"sw":10.4,"sl":7.0,"fs":24.2,"bl":12.9,"pa":128,"wrc":80},{"n":"Christian Moore","t":"LAA","a":23,"x":74.58,"y":29.0,"os":40.7,"zc":82.4,"sw":21.5,"sl":7.2,"fs":40.0,"bl":12.9,"pa":22,"wrc":15},{"n":"Thomas Saggese","t":"STL","a":24,"x":72.18,"y":26.6,"os":40.6,"zc":81.2,"sw":15.6,"sl":7.0,"fs":23.4,"bl":12.8,"pa":82,"wrc":45},{"n":"Alex Freeland","t":"LAD","a":24,"x":70.76,"y":34.6,"os":23.3,"zc":80.5,"sw":10.7,"sl":6.9,"fs":8.3,"bl":12.7,"pa":218,"wrc":80},{"n":"Daylen Lile","t":"WSN","a":23,"x":70.79,"y":33.9,"os":39.2,"zc":90.0,"sw":11.1,"sl":7.5,"fs":8.8,"bl":12.7,"pa":393,"wrc":93},{"n":"Jackson Holliday","t":"BAL","a":22,"x":70.52,"y":32.2,"os":26.8,"zc":81.1,"sw":12.5,"sl":7.1,"fs":7.5,"bl":12.6,"pa":132,"wrc":97},{"n":"Tsung-Che Cheng","t":"BOS","a":24,"x":65.85,"y":37.5,"os":28.9,"zc":79.2,"sw":13.4,"sl":6.9,"fs":0.0,"bl":12.5,"pa":25,"wrc":74},{"n":"CJ Kayfus","t":"CLE","a":24,"x":70.43,"y":25.0,"os":38.2,"zc":81.2,"sw":19.4,"sl":6.7,"fs":18.0,"bl":12.5,"pa":25,"wrc":83},{"n":"Victor Bericoto","t":"SFG","a":24,"x":74.14,"y":30.9,"os":42.9,"zc":92.8,"sw":14.5,"sl":7.6,"fs":45.4,"bl":12.3,"pa":56,"wrc":146},{"n":"Kevin McGonigle","t":"DET","a":21,"x":71.32,"y":35.5,"os":21.1,"zc":91.3,"sw":5.7,"sl":6.9,"fs":17.5,"bl":12.2,"pa":396,"wrc":136},{"n":"Marcelo Mayer","t":"BOS","a":23,"x":74.63,"y":27.6,"os":33.0,"zc":87.5,"sw":12.6,"sl":7.9,"fs":47.2,"bl":12.2,"pa":228,"wrc":62},{"n":"Cole Young","t":"SEA","a":22,"x":71.76,"y":32.7,"os":33.0,"zc":87.8,"sw":8.2,"sl":7.0,"fs":23.4,"bl":12.2,"pa":369,"wrc":104},{"n":"Javier Sanoja","t":"MIA","a":23,"x":69.56,"y":37.7,"os":41.9,"zc":95.4,"sw":5.2,"sl":7.5,"fs":8.2,"bl":12.0,"pa":232,"wrc":100},{"n":"Jimmy Crooks","t":"STL","a":24,"x":71.16,"y":26.9,"os":33.6,"zc":82.1,"sw":14.5,"sl":7.0,"fs":20.2,"bl":11.9,"pa":65,"wrc":49},{"n":"Angel Martinez","t":"CLE","a":24,"x":71.04,"y":28.3,"os":44.8,"zc":92.0,"sw":9.0,"sl":7.3,"fs":16.0,"bl":11.9,"pa":243,"wrc":97},{"n":"Edgar Quero","t":"CHW","a":23,"x":68.81,"y":38.6,"os":31.5,"zc":90.3,"sw":10.0,"sl":6.9,"fs":4.0,"bl":11.6,"pa":172,"wrc":37},{"n":"Petey Halpin","t":"CLE","a":24,"x":69.6,"y":30.4,"os":40.0,"zc":87.7,"sw":14.2,"sl":7.0,"fs":4.3,"bl":11.6,"pa":56,"wrc":8},{"n":"Denzer Guzman","t":"LAA","a":22,"x":73.81,"y":27.5,"os":36.8,"zc":86.3,"sw":12.2,"sl":7.9,"fs":36.9,"bl":11.6,"pa":103,"wrc":96},{"n":"Noelvi Marte","t":"CIN","a":24,"x":72.69,"y":27.9,"os":38.8,"zc":91.9,"sw":11.5,"sl":7.4,"fs":30.1,"bl":11.5,"pa":125,"wrc":72},{"n":"Kyle Karros","t":"COL","a":23,"x":70.45,"y":31.1,"os":27.7,"zc":88.6,"sw":10.4,"sl":7.0,"fs":7.4,"bl":11.4,"pa":306,"wrc":107},{"n":"Evan Carter","t":"TEX","a":23,"x":71.34,"y":29.2,"os":24.0,"zc":85.9,"sw":10.2,"sl":7.1,"fs":20.8,"bl":11.3,"pa":254,"wrc":82},{"n":"Sam Antonacci","t":"CHW","a":23,"x":70.26,"y":33.1,"os":26.2,"zc":91.3,"sw":5.8,"sl":6.8,"fs":9.2,"bl":10.9,"pa":290,"wrc":131},{"n":"Jordan Lawlar","t":"ARI","a":23,"x":69.61,"y":34.5,"os":31.2,"zc":95.6,"sw":9.1,"sl":7.3,"fs":2.8,"bl":10.9,"pa":44,"wrc":141},{"n":"Hao-Yu  Lee","t":"DET","a":23,"x":70.56,"y":35.7,"os":36.1,"zc":85.1,"sw":14.9,"sl":7.0,"fs":17.2,"bl":10.7,"pa":150,"wrc":84},{"n":"Drew Romo","t":"CHW","a":24,"x":69.88,"y":29.8,"os":35.1,"zc":85.3,"sw":13.7,"sl":7.5,"fs":5.6,"bl":10.7,"pa":115,"wrc":56},{"n":"Cole Carrigg","t":"COL","a":24,"x":73.8,"y":22.1,"os":41.6,"zc":86.3,"sw":12.7,"sl":7.4,"fs":42.1,"bl":10.7,"pa":105,"wrc":141},{"n":"Luis Matos","t":"MIL","a":24,"x":71.11,"y":24.1,"os":51.1,"zc":94.7,"sw":18.1,"sl":7.2,"fs":12.8,"bl":10.3,"pa":21,"wrc":23},{"n":"Alejandro Osuna","t":"TEX","a":23,"x":71.68,"y":32.6,"os":35.5,"zc":94.4,"sw":5.5,"sl":7.0,"fs":23.6,"bl":10.3,"pa":186,"wrc":93},{"n":"Jhostynxon Garcia","t":"PIT","a":23,"x":74.28,"y":26.0,"os":45.7,"zc":78.4,"sw":18.1,"sl":7.8,"fs":42.0,"bl":10.0,"pa":37,"wrc":30},{"n":"Matt Shaw","t":"CHC","a":24,"x":69.03,"y":32.0,"os":37.6,"zc":89.3,"sw":8.3,"sl":7.0,"fs":7.3,"bl":9.9,"pa":147,"wrc":104},{"n":"Justin Crawford","t":"PHI","a":22,"x":68.76,"y":30.5,"os":38.6,"zc":88.5,"sw":8.6,"sl":7.0,"fs":4.5,"bl":9.8,"pa":284,"wrc":83},{"n":"Juan Brito","t":"CLE","a":24,"x":68.58,"y":29.2,"os":36.4,"zc":83.9,"sw":14.9,"sl":7.5,"fs":0.0,"bl":9.7,"pa":56,"wrc":44},{"n":"Travis Bazzana","t":"CLE","a":23,"x":69.65,"y":34.1,"os":29.0,"zc":85.9,"sw":10.8,"sl":7.0,"fs":13.7,"bl":9.6,"pa":263,"wrc":110},{"n":"Victor Mesa Jr.","t":"TBR","a":24,"x":74.0,"y":26.5,"os":32.1,"zc":84.3,"sw":10.9,"sl":7.9,"fs":39.0,"bl":9.4,"pa":94,"wrc":80},{"n":"Nolan Schanuel","t":"LAA","a":24,"x":68.01,"y":36.6,"os":31.4,"zc":92.0,"sw":7.2,"sl":6.8,"fs":6.6,"bl":8.9,"pa":302,"wrc":98},{"n":"Ezequiel Tovar","t":"COL","a":24,"x":71.97,"y":24.9,"os":49.0,"zc":83.6,"sw":16.4,"sl":7.6,"fs":20.3,"bl":8.8,"pa":329,"wrc":43},{"n":"Jacob Gonzalez","t":"CHW","a":24,"x":71.6,"y":24.3,"os":36.4,"zc":91.9,"sw":9.3,"sl":7.2,"fs":14.9,"bl":8.3,"pa":95,"wrc":99},{"n":"Chase Meidroth","t":"CHW","a":24,"x":66.86,"y":36.1,"os":28.8,"zc":86.9,"sw":7.2,"sl":6.6,"fs":1.1,"bl":8.2,"pa":376,"wrc":101},{"n":"Jonah Cox","t":"SFG","a":24,"x":69.08,"y":28.0,"os":43.6,"zc":57.9,"sw":26.7,"sl":6.3,"fs":5.9,"bl":8.0,"pa":29,"wrc":106},{"n":"Luke Keaschall","t":"MIN","a":23,"x":69.41,"y":32.1,"os":25.1,"zc":92.3,"sw":6.3,"sl":6.8,"fs":10.5,"bl":7.8,"pa":342,"wrc":98},{"n":"Jesus Rodriguez","t":"SFG","a":24,"x":68.64,"y":36.5,"os":40.0,"zc":91.7,"sw":9.0,"sl":7.3,"fs":3.2,"bl":7.7,"pa":43,"wrc":93},{"n":"Colt Emerson","t":"SEA","a":20,"x":72.56,"y":21.7,"os":39.2,"zc":78.4,"sw":15.5,"sl":7.2,"fs":25.5,"bl":7.4,"pa":152,"wrc":95},{"n":"Darell Hernaiz","t":"ATH","a":24,"x":69.06,"y":28.3,"os":36.5,"zc":87.2,"sw":10.0,"sl":7.1,"fs":8.3,"bl":7.1,"pa":134,"wrc":73},{"n":"Charles McAdoo","t":"TOR","a":24,"x":73.68,"y":31.4,"os":32.5,"zc":88.6,"sw":10.2,"sl":7.1,"fs":38.6,"bl":5.7,"pa":25,"wrc":13},{"n":"Jacob Wilson","t":"ATH","a":24,"x":64.13,"y":36.2,"os":42.4,"zc":92.6,"sw":7.5,"sl":6.2,"fs":0.3,"bl":5.6,"pa":222,"wrc":85},{"n":"Edwin Arroyo","t":"CIN","a":22,"x":69.21,"y":28.1,"os":44.3,"zc":89.3,"sw":11.7,"sl":7.3,"fs":6.0,"bl":4.7,"pa":93,"wrc":62},{"n":"Carson Williams","t":"TBR","a":23,"x":74.8,"y":18.6,"os":39.7,"zc":79.5,"sw":15.3,"sl":7.5,"fs":40.4,"bl":4.7,"pa":33,"wrc":-22},{"n":"Cooper Ingle","t":"CLE","a":24,"x":68.34,"y":21.2,"os":25.0,"zc":90.3,"sw":9.5,"sl":6.9,"fs":0.0,"bl":3.0,"pa":24,"wrc":-4},{"n":"Drew Cavanaugh","t":"SFG","a":24,"x":70.54,"y":29.7,"os":28.3,"zc":83.3,"sw":9.0,"sl":6.7,"fs":9.1,"bl":2.7,"pa":26,"wrc":3}];
+const MED_X = 72.44, MED_Y = 30.6;
+
+function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function hex2rgb(h){ h=h.replace('#',''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function mix(c1,c2,t){ const a=hex2rgb(c1),b=hex2rgb(c2); return `rgb(${Math.round(lerp(a[0],b[0],t))},${Math.round(lerp(a[1],b[1],t))},${Math.round(lerp(a[2],b[2],t))})`; }
+
+// chase domain for colour scale
+const osVals = DATA.map(d=>d.os);
+const osMin = Math.min(...osVals), osMax = Math.max(...osVals);
+function chaseColor(os){
+  const g=cssv('--c-good'), m=cssv('--c-mid'), b=cssv('--c-bad');
+  let t=(os-osMin)/(osMax-osMin);
+  t=Math.max(0,Math.min(1,t));
+  return t<0.5 ? mix(g,m,t/0.5) : mix(m,b,(t-0.5)/0.5);
+}
+
+const points = DATA.map(d=>({x:d.x, y:d.y, raw:d}));
+
+// quadrant plugin: dashed median lines + corner labels
+const quadPlugin = {
+  id:'quad',
+  beforeDraw(chart){
+    const {ctx, chartArea:a, scales} = chart;
+    if(!a) return;
+    const px = scales.x.getPixelForValue(MED_X);
+    const py = scales.y.getPixelForValue(MED_Y);
+    ctx.save();
+    ctx.strokeStyle = cssv('--quad-line');
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(px,a.top); ctx.lineTo(px,a.bottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a.left,py); ctx.lineTo(a.right,py); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+};
+
+const isTouch = window.matchMedia('(hover: none)').matches;
+
+const chart = new Chart(document.getElementById('c'), {
+  type:'scatter',
+  data:{ datasets:[{
+    data: points,
+    parsing:false,
+    pointRadius: isTouch?5:5.5,
+    pointHoverRadius: isTouch?7:8,
+    backgroundColor: ctx=> ctx.raw ? chaseColor(ctx.raw.raw.os) : '#888',
+    borderColor: cssv('--dot-stroke'),
+    borderWidth: 1,
+    pointHoverBorderColor: cssv('--highlight-stroke'),
+    pointHoverBorderWidth: 2,
+  }]},
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    layout:{ padding:{ top:6, right:8, bottom:2, left:2 } },
+    interaction:{ mode:'nearest', intersect:true },
+    scales:{
+      x:{
+        title:{ display:true, text:'Average bat speed (mph)  →  faster', color:cssv('--ink-soft'),
+          font:{ family:'Space Grotesk', size:12, weight:'600' } },
+        grid:{ color:cssv('--grid'), drawTicks:false },
+        border:{ color:cssv('--axis') },
+        ticks:{ color:cssv('--ink-soft'), font:{ family:'Space Mono', size:10 }, padding:6 },
+      },
+      y:{
+        title:{ display:true, text:'Squared-up rate (%)  →  more', color:cssv('--ink-soft'),
+          font:{ family:'Space Grotesk', size:12, weight:'600' } },
+        grid:{ color:cssv('--grid'), drawTicks:false },
+        border:{ color:cssv('--axis') },
+        ticks:{ color:cssv('--ink-soft'), font:{ family:'Space Mono', size:10 }, padding:6,
+          callback:v=>v+'%' },
+      }
+    },
+    plugins:{
+      legend:{ display:false },
+      tooltip:{
+        backgroundColor:cssv('--tip-bg'),
+        titleColor:cssv('--tip-ink'),
+        bodyColor:cssv('--tip-soft'),
+        borderColor:'rgba(255,255,255,0.08)', borderWidth:1,
+        padding:11, cornerRadius:7,
+        titleFont:{ family:'Space Grotesk', size:13, weight:'700' },
+        bodyFont:{ family:'Space Mono', size:11 },
+        displayColors:false,
+        callbacks:{
+          title:it=>{ const d=it[0].raw.raw; return d.n+'  ·  '+d.t+'  ·  '+d.a; },
+          label:()=>'',
+          afterBody:it=>{
+            const d=it[0].raw.raw;
+            return [
+              'Bat speed    '+d.x+' mph',
+              'Squared-up   '+d.y+'%',
+              'Blast con    '+d.bl+'%',
+              'Chase        '+d.os+'%',
+              'Z-Contact    '+d.zc+'%',
+              'SwStr        '+d.sw+'%',
+              'Swing len    '+d.sl+' ft',
+              'Fast-swing   '+d.fs+'%',
+              '',
+              'PA           '+d.pa,
+              'wRC+         '+d.wrc,
+            ];
+          }
+        }
+      }
+    }
+  },
+  plugins:[quadPlugin]
+});
+
+// re-theme on colour scheme change
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+  const ds = chart.data.datasets[0];
+  ds.borderColor = cssv('--dot-stroke');
+  ds.pointHoverBorderColor = cssv('--highlight-stroke');
+  chart.options.scales.x.grid.color = cssv('--grid');
+  chart.options.scales.y.grid.color = cssv('--grid');
+  chart.options.scales.x.border.color = cssv('--axis');
+  chart.options.scales.y.border.color = cssv('--axis');
+  chart.options.scales.x.ticks.color = cssv('--ink-soft');
+  chart.options.scales.y.ticks.color = cssv('--ink-soft');
+  chart.options.scales.x.title.color = cssv('--ink-soft');
+  chart.options.scales.y.title.color = cssv('--ink-soft');
+  chart.options.plugins.tooltip.backgroundColor = cssv('--tip-bg');
+  chart.options.plugins.tooltip.titleColor = cssv('--tip-ink');
+  chart.options.plugins.tooltip.bodyColor = cssv('--tip-soft');
+  chart.update();
+});
+</script>
+</body>
+</html>
