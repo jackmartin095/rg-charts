@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fastball velocity, April through July</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#fff;--ink:#14181c;--ink-soft:#5b6670;--grid:#e6e9ec;--axis:#b3bac0;
+    --tip-bg:#14181c;--tip-ink:#fff;--tip-soft:#9aa2a9;
+    --gain:#c9503c;--loss:#2f6f9e;--dim:#d5d9dc;--hi-stroke:#14181c;}
+  @media (prefers-color-scheme:dark){:root{--bg:#14181c;--ink:#f2f4f6;--ink-soft:#9aa2a9;
+    --grid:#262d33;--axis:#3a434b;--tip-bg:#0b0e10;--tip-ink:#f2f4f6;--tip-soft:#7a838b;
+    --gain:#e0654e;--loss:#4a97cf;--dim:#2a3037;--hi-stroke:#f2f4f6;}}
+  *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Space Grotesk",system-ui,sans-serif;font-feature-settings:"tnum" 1,"lnum" 1;}
+  .wrap{max-width:780px;margin:0 auto;padding:20px 16px 12px}
+  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 6px}
+  h1{font-size:20px;font-weight:700;line-height:1.25;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{font-size:13px;line-height:1.45;color:var(--ink-soft);margin:0 0 14px;max-width:64ch}
+  .chart-box{position:relative;width:100%;height:680px}
+  @media(max-width:520px){.chart-box{height:560px}h1{font-size:18px}}
+  .legend{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin:12px 0 2px;font-size:11.5px;color:var(--ink-soft)}
+  .lg-item{display:flex;align-items:center;gap:6px}
+  .lg-line{width:16px;height:2.5px;border-radius:2px}
+  .foot{font-size:10.5px;color:var(--ink-soft);margin:10px 0 0;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+</style></head><body>
+<div class="wrap">
+  <p class="eyebrow">Pitch tracking / starters, 4-seam fastball</p>
+  <h1>Fastball velocity, April through July</h1>
+  <p class="sub">90 starters tracked by four-seam fastball velocity since Opening Day. Each line is one pitcher's average velocity by month. Red lines are the ten biggest gainers, blue lines the ten biggest decliners. Hover a line to see the exact velocities.</p>
+  <div class="chart-box"><canvas id="c"></canvas></div>
+  <div class="legend">
+    <span class="lg-item"><span class="lg-line" style="background:var(--gain)"></span>Biggest gainers</span>
+    <span class="lg-item"><span class="lg-line" style="background:var(--loss)"></span>Biggest decliners</span>
+    <span class="lg-item"><span class="lg-line" style="background:var(--dim)"></span>Everyone else</span>
+  </div>
+  <p class="foot"><span>Data: FanGraphs pitch-type leaderboards, min IP by month</span><span>@jack_mariners</span></p>
+</div>
+<script>
+const D = {"months":["Apr","May","Jun","Jul"],"data":[{"n":"Jose Soriano","t":"LAA","v":[97.83,97.51,96.51,96.4],"d":-1.43,"base":"Apr","latest":"Jul","lab":true},{"n":"Bryce Miller","t":"SEA","v":[null,96.71,96.28,95.29],"d":-1.42,"base":"May","latest":"Jul","lab":true},{"n":"Shane Baz","t":"BAL","v":[96.78,95.86,95.62,95.66],"d":-1.12,"base":"Apr","latest":"Jul","lab":true},{"n":"Sonny Gray","t":"BOS","v":[91.84,91.76,91.93,90.79],"d":-1.05,"base":"Apr","latest":"Jul","lab":true},{"n":"Framber Valdez","t":"DET","v":[null,95.22,95.34,94.32],"d":-0.9,"base":"May","latest":"Jul","lab":true},{"n":"Paul Skenes","t":"PIT","v":[97.36,96.98,96.79,96.57],"d":-0.79,"base":"Apr","latest":"Jul","lab":true},{"n":"Shota Imanaga","t":"CHC","v":[92.03,91.52,91.88,91.26],"d":-0.77,"base":"Apr","latest":"Jul","lab":true},{"n":"Chase Burns","t":"CIN","v":[98.12,97.96,97.47,97.35],"d":-0.77,"base":"Apr","latest":"Jul","lab":true},{"n":"Logan Webb","t":"SFG","v":[92.6,null,92.36,91.91],"d":-0.69,"base":"Apr","latest":"Jul","lab":true},{"n":"Dylan Cease","t":"TOR","v":[97.85,97.83,97.41,97.24],"d":-0.61,"base":"Apr","latest":"Jul","lab":true},{"n":"Shane Drohan","t":"MIL","v":[null,null,95.01,94.47],"d":-0.54,"base":"Jun","latest":"Jul","lab":false},{"n":"Brandon Pfaadt","t":"ARI","v":[93.49,null,null,92.96],"d":-0.53,"base":"Apr","latest":"Jul","lab":false},{"n":"Peter Lambert","t":"HOU","v":[null,94.02,93.63,93.56],"d":-0.46,"base":"May","latest":"Jul","lab":false},{"n":"Noah Schultz","t":"CHW","v":[null,95.21,null,94.76],"d":-0.45,"base":"May","latest":"Jul","lab":false},{"n":"MacKenzie Gore","t":"TEX","v":[95.7,94.88,95.66,95.3],"d":-0.4,"base":"Apr","latest":"Jul","lab":false},{"n":"Will Warren","t":"NYY","v":[93.87,93.55,null,93.48],"d":-0.39,"base":"Apr","latest":"Jul","lab":false},{"n":"Zebby Matthews","t":"MIN","v":[null,95.41,94.81,95.07],"d":-0.34,"base":"May","latest":"Jul","lab":false},{"n":"Jake Bennett","t":"BOS","v":[null,null,93.1,92.76],"d":-0.34,"base":"Jun","latest":"Jul","lab":false},{"n":"George Kirby","t":"SEA","v":[96.61,96.81,96.63,96.28],"d":-0.33,"base":"Apr","latest":"Jul","lab":false},{"n":"Robbie Ray","t":"SFG","v":[93.4,93.16,93.2,93.09],"d":-0.31,"base":"Apr","latest":"Jul","lab":false},{"n":"Logan Henderson","t":"MIL","v":[null,93.16,null,92.87],"d":-0.29,"base":"May","latest":"Jul","lab":false},{"n":"Jesus Luzardo","t":"PHI","v":[97.19,96.99,97.26,96.9],"d":-0.29,"base":"Apr","latest":"Jul","lab":false},{"n":"Davis Martin","t":"CHW","v":[93.96,94.54,93.98,93.68],"d":-0.28,"base":"Apr","latest":"Jul","lab":false},{"n":"Kyle Bradish","t":"BAL","v":[93.91,93.81,94.84,93.63],"d":-0.28,"base":"Apr","latest":"Jul","lab":false},{"n":"Tanner Bibee","t":"CLE","v":[94.14,94.02,93.81,93.92],"d":-0.22,"base":"Apr","latest":"Jul","lab":false},{"n":"Nolan McLean","t":"NYM","v":[96.35,95.9,96.09,96.14],"d":-0.21,"base":"Apr","latest":"Jul","lab":false},{"n":"Spencer Arrighetti","t":"HOU","v":[null,92.58,92.21,92.38],"d":-0.2,"base":"May","latest":"Jul","lab":false},{"n":"Ryan Weathers","t":"NYY","v":[95.92,95.21,96.25,95.76],"d":-0.16,"base":"Apr","latest":"Jul","lab":false},{"n":"Michael King","t":"SDP","v":[94.06,94.07,93.98,93.93],"d":-0.13,"base":"Apr","latest":"Jul","lab":false},{"n":"Payton Tolle","t":"BOS","v":[null,96.32,95.65,96.2],"d":-0.12,"base":"May","latest":"Jul","lab":false},{"n":"Ranger Suarez","t":"BOS","v":[91.66,91.95,91.55,null],"d":-0.11,"base":"Apr","latest":"Jun","lab":false},{"n":"Trey Yesavage","t":"TOR","v":[null,94.3,94.49,94.19],"d":-0.11,"base":"May","latest":"Jul","lab":false},{"n":"Christian Scott","t":"NYM","v":[null,95.51,null,95.41],"d":-0.1,"base":"May","latest":"Jul","lab":false},{"n":"Zack Wheeler","t":"PHI","v":[null,95.09,95.73,95.0],"d":-0.09,"base":"May","latest":"Jul","lab":false},{"n":"Griffin Jax","t":"TBR","v":[null,null,95.98,95.93],"d":-0.05,"base":"Jun","latest":"Jul","lab":false},{"n":"Jared Jones","t":"PIT","v":[null,null,98.55,98.5],"d":-0.05,"base":"Jun","latest":"Jul","lab":false},{"n":"Reid Detmers","t":"LAA","v":[94.0,94.0,94.5,93.96],"d":-0.04,"base":"Apr","latest":"Jul","lab":false},{"n":"Tarik Skubal","t":"DET","v":[96.58,null,97.24,96.58],"d":0.0,"base":"Apr","latest":"Jul","lab":false},{"n":"Drew Rasmussen","t":"TBR","v":[95.88,96.2,95.95,95.88],"d":0.0,"base":"Apr","latest":"Jul","lab":false},{"n":"Sandy Alcantara","t":"MIA","v":[97.35,97.27,97.96,97.36],"d":0.01,"base":"Apr","latest":"Jul","lab":false},{"n":"Kumar Rocker","t":"TEX","v":[94.54,94.2,94.51,94.57],"d":0.03,"base":"Apr","latest":"Jul","lab":false},{"n":"Janson Junk","t":"MIA","v":[94.23,94.3,null,null],"d":0.07,"base":"Apr","latest":"May","lab":false},{"n":"Ian Seymour","t":"TBR","v":[null,null,91.52,91.62],"d":0.1,"base":"Jun","latest":"Jul","lab":false},{"n":"Gage Jump","t":"ATH","v":[null,null,96.34,96.47],"d":0.13,"base":"Jun","latest":"Jul","lab":false},{"n":"Walbert Urena","t":"LAA","v":[null,97.3,97.04,97.44],"d":0.14,"base":"May","latest":"Jul","lab":false},{"n":"Foster Griffin","t":"WSN","v":[91.39,91.34,91.75,91.55],"d":0.16,"base":"Apr","latest":"Jul","lab":false},{"n":"Gerrit Cole","t":"NYY","v":[null,null,96.88,97.06],"d":0.18,"base":"Jun","latest":"Jul","lab":false},{"n":"Landen Roupp","t":"SFG","v":[92.78,92.73,93.05,92.99],"d":0.21,"base":"Apr","latest":"Jul","lab":false},{"n":"Dustin May","t":"STL","v":[96.96,96.86,96.77,97.17],"d":0.21,"base":"Apr","latest":"Jul","lab":false},{"n":"Bryce Elder","t":"ATL","v":[92.48,92.82,92.26,92.72],"d":0.24,"base":"Apr","latest":"Jul","lab":false},{"n":"Nathan Eovaldi","t":"TEX","v":[94.55,94.61,94.5,94.8],"d":0.25,"base":"Apr","latest":"Jul","lab":false},{"n":"Jacob deGrom","t":"TEX","v":[97.08,97.22,97.38,null],"d":0.3,"base":"Apr","latest":"Jun","lab":false},{"n":"Jameson Taillon","t":"CHC","v":[91.53,91.85,null,null],"d":0.32,"base":"Apr","latest":"May","lab":false},{"n":"Bubba Chandler","t":"PIT","v":[98.55,98.33,98.59,98.89],"d":0.34,"base":"Apr","latest":"Jul","lab":false},{"n":"Brandon Sproat","t":"MIL","v":[96.99,96.52,96.83,97.36],"d":0.37,"base":"Apr","latest":"Jul","lab":false},{"n":"Kevin Gausman","t":"TOR","v":[93.56,94.3,93.89,93.99],"d":0.43,"base":"Apr","latest":"Jul","lab":false},{"n":"Michael Wacha","t":"KCR","v":[92.78,93.0,93.48,93.21],"d":0.43,"base":"Apr","latest":"Jul","lab":false},{"n":"David Peterson","t":"NYM","v":[91.89,92.44,null,92.35],"d":0.46,"base":"Apr","latest":"Jul","lab":false},{"n":"Luis Castillo","t":"SEA","v":[94.82,95.29,95.87,95.31],"d":0.49,"base":"Apr","latest":"Jul","lab":false},{"n":"Emmet Sheehan","t":"LAD","v":[94.19,94.24,94.93,94.69],"d":0.5,"base":"Apr","latest":"Jul","lab":false},{"n":"Cade Cavalli","t":"WSN","v":[96.25,96.87,97.14,96.78],"d":0.53,"base":"Apr","latest":"Jul","lab":false},{"n":"Eury Perez","t":"MIA","v":[98.11,98.34,null,98.67],"d":0.56,"base":"Apr","latest":"Jul","lab":false},{"n":"Noah Cameron","t":"KCR","v":[92.02,92.56,92.54,92.59],"d":0.57,"base":"Apr","latest":"Jul","lab":false},{"n":"Aaron Nola","t":"PHI","v":[91.85,92.49,92.46,92.43],"d":0.58,"base":"Apr","latest":"Jul","lab":false},{"n":"Emerson Hancock","t":"SEA","v":[94.92,95.31,96.03,95.5],"d":0.58,"base":"Apr","latest":"Jul","lab":false},{"n":"Bryan Woo","t":"SEA","v":[95.63,95.56,96.32,96.23],"d":0.6,"base":"Apr","latest":"Jul","lab":false},{"n":"Braxton Ashcraft","t":"PIT","v":[96.72,97.24,97.57,97.35],"d":0.63,"base":"Apr","latest":"Jul","lab":false},{"n":"Shane McClanahan","t":"TBR","v":[95.1,95.56,null,95.82],"d":0.72,"base":"Apr","latest":"Jul","lab":false},{"n":"Robert Gasser","t":"MIL","v":[null,null,92.25,92.97],"d":0.72,"base":"Jun","latest":"Jul","lab":false},{"n":"Cam Schlittler","t":"NYY","v":[97.57,97.97,97.67,98.31],"d":0.74,"base":"Apr","latest":"Jul","lab":false},{"n":"Casey Mize","t":"DET","v":[93.27,null,null,94.04],"d":0.77,"base":"Apr","latest":"Jul","lab":false},{"n":"Michael McGreevy","t":"STL","v":[91.27,91.58,92.03,92.06],"d":0.79,"base":"Apr","latest":"Jul","lab":false},{"n":"Yoshinobu Yamamoto","t":"LAD","v":[95.43,96.25,96.41,96.27],"d":0.84,"base":"Apr","latest":"Jul","lab":false},{"n":"Parker Messick","t":"CLE","v":[93.55,93.95,94.16,94.51],"d":0.96,"base":"Apr","latest":"Jul","lab":false},{"n":"Troy Melton","t":"DET","v":[null,null,95.92,96.98],"d":1.06,"base":"Jun","latest":"Jul","lab":false},{"n":"Freddy Peralta","t":"NYM","v":[93.89,93.92,94.16,94.95],"d":1.06,"base":"Apr","latest":"Jul","lab":false},{"n":"Justin Wrobleski","t":"LAD","v":[93.6,93.99,95.26,94.68],"d":1.08,"base":"Apr","latest":"Jul","lab":false},{"n":"Taj Bradley","t":"MIN","v":[96.4,null,96.97,97.49],"d":1.09,"base":"Apr","latest":"Jul","lab":false},{"n":"Kyle Leahy","t":"STL","v":[93.59,93.95,94.83,94.74],"d":1.15,"base":"Apr","latest":"Jul","lab":false},{"n":"Joe Ryan","t":"MIN","v":[92.58,93.64,94.14,93.82],"d":1.24,"base":"Apr","latest":"Jul","lab":true},{"n":"Joey Cantillo","t":"CLE","v":[91.68,91.98,92.12,92.99],"d":1.31,"base":"Apr","latest":"Jul","lab":true},{"n":"Trevor Rogers","t":"BAL","v":[92.61,null,94.06,94.05],"d":1.44,"base":"Apr","latest":"Jul","lab":true},{"n":"Logan Gilbert","t":"SEA","v":[95.39,95.45,96.34,96.84],"d":1.45,"base":"Apr","latest":"Jul","lab":true},{"n":"Chris Sale","t":"ATL","v":[95.1,96.11,96.81,96.56],"d":1.46,"base":"Apr","latest":"Jul","lab":true},{"n":"Gavin Williams","t":"CLE","v":[96.54,96.58,97.88,98.12],"d":1.58,"base":"Apr","latest":"Jul","lab":true},{"n":"Roki Sasaki","t":"LAD","v":[97.11,97.17,98.39,98.81],"d":1.7,"base":"Apr","latest":"Jul","lab":true},{"n":"Sean Manaea","t":"NYM","v":[89.72,null,90.9,91.44],"d":1.72,"base":"Apr","latest":"Jul","lab":true},{"n":"Sean Burke","t":"CHW","v":[93.94,94.78,95.43,95.69],"d":1.75,"base":"Apr","latest":"Jul","lab":true},{"n":"Jacob Misiorowski","t":"MIL","v":[99.06,100.72,101.52,101.53],"d":2.47,"base":"Apr","latest":"Jul","lab":true},{"n":"Mitch Keller","t":"PIT","v":[93.43,93.41,93.46,93.37],"d":-0.06,"base":"Apr","latest":"Jul","lab":false}]};
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+function lastName(n){const suf=new Set(["Jr.","Sr.","II","III","IV"]);let p=n.split(" ").filter(w=>!suf.has(w));return p[p.length-1];}
+
+const endLabels = {
+  id:'endLabels',
+  afterDatasetsDraw(chart){
+    const {ctx, chartArea:a, scales} = chart;
+    if(!a) return;
+    ctx.save();
+    ctx.font = '600 10.5px "Space Grotesk", sans-serif';
+    ctx.textBaseline = 'middle';
+
+    const cands = [];
+    chart.data.datasets.forEach(ds=>{
+      const meta = ds._meta;
+      if(!meta.lab) return;
+      let lastIdx = -1;
+      for(let j=ds.data.length-1;j>=0;j--){ if(ds.data[j]!=null){ lastIdx=j; break; } }
+      if(lastIdx===-1) return;
+      const px = scales.x.getPixelForValue(lastIdx);
+      const py = scales.y.getPixelForValue(ds.data[lastIdx]);
+      cands.push({y:py, x:px, text:lastName(meta.n), color:ds.borderColor, orig:py});
+    });
+    cands.sort((p,q)=>p.y-q.y);
+
+    const GAP = 19;
+    for(let pass=0; pass<8; pass++){
+      let moved=false;
+      for(let i=1;i<cands.length;i++){
+        if(cands[i].y - cands[i-1].y < GAP){
+          const mid = (cands[i].y+cands[i-1].y)/2;
+          cands[i-1].y = mid - GAP/2;
+          cands[i].y = mid + GAP/2;
+          moved=true;
+        }
+      }
+      if(!moved) break;
+    }
+    cands.forEach(c=>{ c.y = Math.max(a.top+6, Math.min(a.bottom-6, c.y)); });
+
+    cands.forEach(c=>{
+      const lx = a.right + 6;
+      if(Math.abs(c.y - c.orig) > 3){
+        ctx.strokeStyle = c.color; ctx.globalAlpha=.5; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(c.x, c.orig); ctx.lineTo(lx-2, c.y); ctx.stroke();
+        ctx.globalAlpha=1;
+      }
+      ctx.fillStyle = c.color;
+      ctx.textAlign = 'left';
+      ctx.fillText(c.text, lx, c.y);
+    });
+    ctx.restore();
+  }
+};
+
+function hexToRgba(hex, alpha){
+  hex = hex.replace('#','');
+  const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+const datasets = D.data.map(p=>{
+  const isGain = p.lab && p.d>0;
+  const isLoss = p.lab && p.d<0;
+  const color = isGain ? cssv('--gain') : isLoss ? cssv('--loss') : cssv('--dim');
+  const isHex = color.startsWith('#');
+  return {
+    label: p.n,
+    data: p.v,
+    borderColor: color,
+    backgroundColor: color,
+    borderWidth: p.lab ? 2.2 : 1,
+    pointRadius: p.lab ? 2 : 0,
+    pointHoverRadius: 4,
+    order: p.lab ? 1 : 2,
+    tension: .25,
+    spanGaps: true,
+    segment:{
+      borderDash: ctx => (ctx.p0.skip || ctx.p1.skip) ? [2,3] : undefined,
+      borderColor: ctx => (ctx.p0.skip || ctx.p1.skip) ? (isHex ? hexToRgba(color, .35) : color) : undefined
+    },
+    _meta: p
+  };
+});
+// draw labeled lines AFTER dim ones so they sit on top
+datasets.sort((a,b)=> (a._meta.lab===b._meta.lab) ? 0 : (a._meta.lab? 1 : -1));
+
+const chart = new Chart(document.getElementById('c'), {
+  type:'line',
+  data:{ labels: D.months, datasets },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    layout:{padding:{top:10,right:88,bottom:2,left:2}},
+    interaction:{mode:'nearest', intersect:false},
+    scales:{
+      x:{ grid:{color:cssv('--grid'), drawTicks:false}, border:{color:cssv('--axis')},
+          ticks:{color:cssv('--ink-soft'), font:{family:'Space Grotesk', size:11.5, weight:'600'}} },
+      y:{ min:89, title:{display:true, text:'Avg fastball velocity (mph)', color:cssv('--ink-soft'),
+            font:{family:'Space Grotesk', size:12, weight:'600'}},
+          grid:{color:cssv('--grid'), drawTicks:false}, border:{color:cssv('--axis')},
+          ticks:{color:cssv('--ink-soft'), font:{family:'Space Mono', size:10}, callback:v=>v.toFixed(0)} }
+    },
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:cssv('--tip-bg'), titleColor:cssv('--tip-ink'), bodyColor:cssv('--tip-soft'),
+        borderColor:'rgba(255,255,255,.08)', borderWidth:1, padding:10, cornerRadius:7,
+        titleFont:{family:'Space Grotesk', size:12.5, weight:'700'}, bodyFont:{family:'Space Mono', size:11},
+        callbacks:{
+          title: items => items.length ? items[0].dataset.label+'  \u00b7  '+items[0].dataset._meta.t : '',
+          label: () => '',
+          afterBody: items => {
+            if(!items.length) return [];
+            const m = items[0].dataset._meta;
+            const hoverMonth = items[0].label;
+            const hoverVal = items[0].parsed.y;
+            const s = (m.d>=0?'+':'')+m.d.toFixed(2);
+            const baseIdx = D.months.indexOf(m.base), latestIdx = D.months.indexOf(m.latest);
+            const baseVal = m.v[baseIdx], latestVal = m.v[latestIdx];
+            return [hoverMonth+': '+hoverVal.toFixed(2)+' mph', '', m.base+' '+baseVal+' \u2192 '+m.latest+' '+latestVal, 'Change: '+s+' mph'];
+          }
+        }
+      }
+    }
+  },
+  plugins:[endLabels]
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+  ['x','y'].forEach(ax=>{ chart.options.scales[ax].grid.color=cssv('--grid'); chart.options.scales[ax].border.color=cssv('--axis');
+    chart.options.scales[ax].ticks.color=cssv('--ink-soft'); });
+  if(chart.options.scales.y.title) chart.options.scales.y.title.color = cssv('--ink-soft');
+  chart.options.plugins.tooltip.backgroundColor=cssv('--tip-bg');
+  chart.options.plugins.tooltip.titleColor=cssv('--tip-ink');
+  chart.options.plugins.tooltip.bodyColor=cssv('--tip-soft');
+  chart.data.datasets.forEach(ds=>{
+    const isGain = ds._meta.lab && ds._meta.d>0;
+    const isLoss = ds._meta.lab && ds._meta.d<0;
+    ds.borderColor = isGain? cssv('--gain') : isLoss? cssv('--loss') : cssv('--dim');
+    ds.backgroundColor = ds.borderColor;
+  });
+  chart.update();
+});
+</script></body></html>
