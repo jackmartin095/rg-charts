@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Z-O discipline vs production, 1H 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{
+    --bg:#ffffff;
+    --text:#1c1b19; --muted:#8a8880; --faint:#b8b6ac;
+    --grid:#ecebe4; --axis:#8a8880; --ref:#c3c2b7;
+    --imp:#2a78d6; --imp-fill:rgba(42,120,214,.6);
+    --dec:#e0642a; --dec-fill:rgba(224,100,42,.6);
+  }
+  @media(prefers-color-scheme:dark){:root{
+    --bg:#16150f;
+    --text:#f2f0e6; --muted:#9c9a8f; --faint:#6b6a60;
+    --grid:#2a2822; --axis:#9c9a8f; --ref:#444;
+    --imp:#4f97ec; --imp-fill:rgba(79,151,236,.6);
+    --dec:#f0824c; --dec-fill:rgba(240,130,76,.6);
+  }}
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:'Space Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 18px 16px;}
+  .eyebrow{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 8px;}
+  h1{font-size:23px;line-height:1.2;font-weight:700;margin:0 0 10px;letter-spacing:-.01em;}
+  .sub{font-size:14px;line-height:1.5;color:var(--muted);margin:0 0 16px;max-width:64ch;}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:12px 0 0;font-size:12px;color:var(--muted);}
+  .legend span{display:flex;align-items:center;gap:5px;}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+  footer{margin-top:14px;padding-top:10px;border-top:1px solid var(--grid);
+    font-family:'Space Mono',monospace;font-size:11px;color:var(--faint);
+    display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Plate discipline // 1H 2026</p>
+  <h1>Discipline change vs production</h1>
+  <p class="sub">Each dot is a fantasy-relevant hitter's 1H 2026 position: how much their Z-O gap moved from their own 2024-2025 average (x-axis) in the first half, plotted against how they're producing (y-axis, wRC+). The vertical line marks no change, the horizontal line marks league-average production.</p>
+  <div style="position:relative;width:100%;height:520px;">
+    <canvas id="cv"></canvas>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--imp)"></i>discipline improved</span>
+    <span><i class="dot" style="background:var(--dec)"></i>discipline declined</span>
+  </div>
+  <footer><span>Data: FanGraphs plate-discipline splits (Statcast-ABS), 2024-2026</span><span>@jack_mariners</span></footer>
+</div>
+<script>
+const D = {"pts": [[4.31, 141, "Mike Trout", 37.0, 41.4], [1.57, 96, "Christian Yelich", 41.9, 43.5], [-5.25, 95, "Manny Machado", 41.4, 36.1], [-3.08, 133, "Bryce Harper", 43.9, 40.9], [-4.02, 153, "Willson Contreras", 38.0, 34.0], [1.57, 124, "Joc Pederson", 33.1, 34.6], [-5.66, 80, "Eugenio Suarez", 39.1, 33.4], [-1.85, 92, "George Springer", 50.0, 48.2], [-3.19, 90, "Francisco Lindor", 41.8, 38.6], [-0.52, 113, "Brandon Nimmo", 41.6, 41.1], [-3.09, 95, "Teoscar Hernandez", 42.6, 39.5], [-8.04, 132, "Max Muncy", 45.6, 37.6], [-4.52, 115, "Christian Walker", 48.2, 43.7], [0.69, 111, "Jose Ramirez", 37.3, 37.9], [2.53, 94, "Mookie Betts", 38.8, 41.3], [-8.13, 108, "Ketel Marte", 43.8, 35.7], [-4.32, 135, "Matt Olson", 42.6, 38.3], [-4.54, 142, "Jake Bauers", 47.7, 43.2], [-8.74, 93, "Willy Adames", 42.2, 33.5], [-7.53, 74, "Trea Turner", 41.4, 33.8], [-10.21, 128, "Ryan O'Hearn", 40.7, 30.4], [1.2, 149, "Kyle Schwarber", 41.2, 42.4], [-5.9, 103, "Mauricio Dubon", 37.7, 31.8], [-3.21, 105, "Ozzie Albies", 46.1, 42.9], [-1.49, 149, "Yandy Diaz", 40.4, 38.9], [-0.68, 128, "Gleyber Torres", 47.7, 47.0], [-4.81, 118, "Rafael Devers", 44.1, 39.3], [1.67, 121, "Taylor Ward", 38.5, 40.2], [-2.71, 97, "Alex Bregman", 41.0, 38.3], [-1.67, 110, "Ian Happ", 43.5, 41.8], [-3.78, 124, "Ty France", 45.3, 41.5], [-4.46, 95, "Dansby Swanson", 47.8, 43.3], [-4.81, 102, "Kyle Tucker", 52.7, 47.9], [-0.35, 121, "Ronald Acuna Jr.", 47.3, 46.9], [4.23, 127, "Luis Arraez", 27.8, 32.0], [-2.69, 96, "Josh Naylor", 38.0, 35.3], [-10.83, 115, "Brandon Lowe", 47.5, 36.7], [2.82, 130, "Pete Alonso", 36.7, 39.5], [-4.29, 145, "Randy Arozarena", 36.4, 32.1], [1.07, 142, "Bryan Reynolds", 45.7, 46.7], [-1.72, 188, "Yordan Alvarez", 37.3, 35.6], [-6.62, 137, "Otto Lopez", 35.1, 28.5], [-3.98, 100, "Vladimir Guerrero Jr.", 41.0, 37.0], [-8.86, 89, "Bo Bichette", 38.2, 29.3], [-4.24, 102, "Fernando Tatis Jr.", 45.8, 41.6], [-8.17, 157, "Shohei Ohtani", 41.6, 33.4], [-1.8, 128, "Mickey Moniak", 35.8, 34.0], [-3.16, 119, "Isaac Paredes", 38.5, 35.3], [0.13, 136, "Miguel Vargas", 47.5, 47.6], [-4.02, 123, "Brandon Marsh", 37.4, 33.3], [-3.17, 90, "Jo Adell", 41.7, 38.5], [-5.04, 109, "Ernie Clement", 31.5, 26.5], [-4.04, 135, "Luis Garcia Jr.", 33.2, 29.1], [-5.79, 94, "Royce Lewis", 37.9, 32.1], [-5.3, 96, "Jazz Chisholm Jr.", 38.7, 33.4], [-6.86, 105, "William Contreras", 44.1, 37.2], [-3.08, 115, "Kody Clemens", 39.4, 36.4], [-1.04, 121, "Ivan Herrera", 37.1, 36.1], [-1.98, 79, "Nico Hoerner", 31.4, 29.4], [-8.37, 72, "Cal Raleigh", 42.3, 33.9], [7.63, 121, "Jake McCarthy", 34.5, 42.1], [7.01, 119, "Jeremy Pena", 34.3, 41.3], [-4.24, 143, "Jonathan Aranda", 41.1, 36.8], [2.47, 127, "Brice Turang", 36.8, 39.2], [-3.82, 123, "Xavier Edwards", 43.2, 39.4], [-2.43, 104, "Jake Burger", 32.6, 30.2], [-1.58, 113, "Heliot Ramos", 38.9, 37.3], [-12.52, 129, "Gabriel Moreno", 36.3, 23.7], [-3.0, 101, "Geraldo Perdomo", 37.9, 34.9], [-4.06, 96, "Jose Caballero", 32.7, 28.6], [-2.92, 114, "Brayan Rocchio", 38.5, 35.5], [-9.49, 116, "Julio Rodriguez", 38.3, 28.8], [-2.94, 113, "Ezequiel Duran", 33.2, 30.3], [-4.16, 108, "Wilyer Abreu", 42.4, 38.2], [9.42, 129, "Blaze Alexander", 44.3, 53.7], [-4.66, 109, "Ceddanne Rafaela", 32.5, 27.8], [-7.53, 82, "Steven Kwan", 36.8, 29.3], [-5.41, 64, "Jarren Duran", 36.6, 31.1], [2.71, 164, "Ryan Jeffers", 29.7, 32.4], [-5.18, 121, "Andy Pages", 38.5, 33.3], [-3.23, 134, "CJ Abrams", 34.8, 31.6], [0.2, 124, "Corbin Carroll", 34.9, 35.1], [-5.32, 122, "Michael Harris II", 28.7, 23.4], [1.73, 138, "Riley Greene", 42.8, 44.5], [-7.75, 110, "Kyle Stowers", 49.2, 41.5], [-7.8, 96, "Gunnar Henderson", 41.8, 34.0], [-10.1, 91, "Bryson Stott", 31.7, 21.6], [-6.1, 118, "Michael Busch", 45.3, 39.2], [5.39, 126, "JJ Bleday", 41.4, 46.8], [-2.3, 145, "Dominic Canzone", 31.8, 29.5], [-2.73, 125, "Elly De La Cruz", 34.8, 32.0], [-4.51, 130, "Dillon Dingler", 34.1, 29.6], [4.19, 121, "Tyler Soderstrom", 39.7, 43.9], [4.69, 143, "Jordan Walker", 31.9, 36.6], [-1.86, 113, "Nick Gonzales", 46.1, 44.2], [-6.9, 121, "Alec Burleson", 41.7, 34.8], [-4.73, 153, "Pete Crow-Armstrong", 38.3, 33.5], [-5.75, 89, "Jasson Dominguez", 42.0, 36.3], [-3.49, 154, "Junior Caminero", 35.1, 31.6], [-4.68, 128, "Jackson Chourio", 33.7, 29.0], [-0.32, 75, "Jackson Merrill", 43.6, 43.3], [2.74, 165, "James Wood", 32.5, 35.3], [-5.04, 167, "Ben Rice", 44.6, 39.6], [4.47, 77, "Sal Frelick", 32.3, 36.8], [-0.32, 87, "Caleb Durbin", 36.4, 36.1], [3.66, 112, "Colson Montgomery", 38.6, 42.3], [-6.65, 118, "Hunter Goodman", 38.4, 31.8], [-5.51, 125, "Liam Hicks", 37.8, 32.3], [-2.86, 77, "Jacob Young", 33.7, 30.8], [-9.79, 90, "Daylen Lile", 48.2, 38.4], [-1.27, 123, "Seiya Suzuki", 38.6, 37.3], [-4.07, 117, "Zach Neto", 37.6, 33.5], [-7.59, 117, "Drake Baldwin", 41.3, 33.8], [-1.95, 105, "Chase Meidroth", 29.9, 28.0], [4.41, 105, "Brooks Lee", 35.3, 39.7], [-3.51, 106, "Cole Young", 39.9, 36.3], [-0.44, 83, "Chandler Simpson", 31.4, 30.9], [-1.68, 94, "Jacob Wilson", 33.4, 31.7], [0.76, 129, "Wyatt Langford", 40.8, 41.5], [2.86, 70, "Dylan Crews", 37.0, 39.8], [-8.1, 111, "Jung Hoo Lee", 39.8, 31.7], [6.13, 115, "Jac Caglianone", 29.1, 35.2], [1.86, 150, "Nick Kurtz", 41.7, 43.6], [1.12, 138, "Freddie Freeman", 47.4, 48.5], [-1.89, 99, "Jose Altuve", 27.6, 25.7], [-4.87, 59, "Salvador Perez", 33.4, 28.5]], "labels": ["Ben Rice", "Bo Bichette", "Cal Raleigh", "Jac Caglianone", "James Wood", "Pete Crow-Armstrong", "Salvador Perez", "Shohei Ohtani", "William Contreras", "Yordan Alvarez"], "xlo": -15, "xhi": 12, "ylo": 40, "yhi": 200};
+const css = getComputedStyle(document.documentElement);
+const V = n => css.getPropertyValue(n).trim();
+const C = {imp:V('--imp'),impF:V('--imp-fill'),dec:V('--dec'),decF:V('--dec-fill'),
+  grid:V('--grid'),axis:V('--axis'),muted:V('--muted'),faint:V('--faint'),
+  ref:V('--ref'),text:V('--text')};
+
+const imp = D.pts.filter(r=>r[0]>=0).map(r=>({x:r[0],y:r[1],n:r[2],bl:r[3],cur:r[4]}));
+const dec = D.pts.filter(r=>r[0]<0).map(r=>({x:r[0],y:r[1],n:r[2],bl:r[3],cur:r[4]}));
+const labelSet = new Set(D.labels);
+
+const refs = {id:'refs', beforeDatasetsDraw(ch){
+  const {ctx,scales:{x,y}} = ch; ctx.save();
+  ctx.strokeStyle = C.ref; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x.getPixelForValue(0), y.getPixelForValue(D.ylo));
+  ctx.lineTo(x.getPixelForValue(0), y.getPixelForValue(D.yhi));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x.getPixelForValue(D.xlo), y.getPixelForValue(100));
+  ctx.lineTo(x.getPixelForValue(D.xhi), y.getPixelForValue(100));
+  ctx.stroke();
+  ctx.restore();
+}};
+
+const annot = {id:'annot', afterDatasetsDraw(ch){
+  const {ctx, scales:{x,y}, chartArea:ca} = ch;
+  ctx.save();
+  ctx.font = "12px 'Space Grotesk',sans-serif";
+  ctx.fillStyle = C.faint;
+  ctx.globalAlpha = 0.7;
+  const qx0 = x.getPixelForValue(0);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+  ctx.fillText('producing, discipline down', qx0-10, ca.top+6);
+  ctx.textAlign = 'left';
+  ctx.fillText('producing, discipline up', qx0+10, ca.top+6);
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('not producing, discipline up', qx0+10, ca.bottom-6);
+  ctx.textAlign = 'right';
+  ctx.fillText('not producing, discipline down', qx0-10, ca.bottom-6);
+  ctx.globalAlpha = 1;
+
+  const items = [];
+  ch.data.datasets.forEach((ds, di) => {
+    const meta = ch.getDatasetMeta(di);
+    meta.data.forEach((pt, i) => {
+      const r = ds.data[i];
+      if (labelSet.has(r.n)) {
+        const right = r.x >= 0;
+        items.push({
+          px: pt.x, py: pt.y,
+          lx: pt.x + (right ? 8 : -8),
+          ly: pt.y,
+          t: r.n, right: right
+        });
+      }
+    });
+  });
+
+  items.sort((a,b) => a.ly - b.ly);
+  const GAP = 13;
+  for (let pass = 0; pass < 5; pass++) {
+    for (let i = 1; i < items.length; i++) {
+      if (items[i].ly - items[i-1].ly < GAP) {
+        items[i].ly = items[i-1].ly + GAP;
+      }
+    }
+  }
+
+  items.forEach(it => {
+    it.ly = Math.max(ca.top+6, Math.min(ca.bottom-6, it.ly));
+    const dist = Math.sqrt((it.lx-it.px)**2 + (it.ly-it.py)**2);
+    if (dist > 12) {
+      ctx.strokeStyle = C.faint; ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(it.px, it.py);
+      ctx.lineTo(it.lx, it.ly);
+      ctx.stroke();
+    }
+    ctx.font = "11px 'Space Grotesk',sans-serif";
+    ctx.fillStyle = C.muted;
+    ctx.textAlign = it.right ? 'left' : 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(it.t, it.lx, it.ly);
+  });
+  ctx.restore();
+}};
+
+new Chart(document.getElementById('cv'), {
+  data: { datasets: [
+    {type:'scatter', data:imp, pointRadius:4, pointHoverRadius:7,
+     backgroundColor:C.impF, borderColor:C.imp, borderWidth:0.5},
+    {type:'scatter', data:dec, pointRadius:4, pointHoverRadius:7,
+     backgroundColor:C.decF, borderColor:C.dec, borderWidth:0.5}
+  ]},
+  plugins: [refs, annot],
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    layout: {padding: {top:4, right:10, bottom:4, left:4}},
+    plugins: {
+      legend: {display: false},
+      tooltip: {callbacks: {label: it => {
+        if (!it || !it.raw) return '';
+        const r = it.raw;
+        return [r.n, 'Baseline Z-O: ' + r.bl.toFixed(1), '1H26 Z-O: ' + r.cur.toFixed(1),
+          'Deviation: ' + (r.x>=0?'+':'') + r.x.toFixed(1), 'wRC+: ' + r.y];
+      }}}
+    },
+    scales: {
+      x: {type:'linear', min:D.xlo, max:D.xhi,
+        title:{display:true, text:'1H26 Z-O change from own 2024-2025 level (pts)',
+          color:C.muted, font:{family:"'Space Grotesk'",size:12}},
+        ticks:{color:C.axis, font:{family:"'Space Mono'",size:11}, stepSize:4},
+        grid:{color:C.grid}, border:{color:C.grid}},
+      y: {type:'linear', min:D.ylo, max:D.yhi,
+        title:{display:true, text:'1H26 wRC+',
+          color:C.muted, font:{family:"'Space Mono'",size:12}},
+        ticks:{color:C.axis, font:{family:"'Space Mono'",size:11}, stepSize:20},
+        grid:{color:C.grid}, border:{color:C.grid}}
+    }
+  }
+});
+</script>
+</body>
+</html>
