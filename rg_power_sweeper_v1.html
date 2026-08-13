@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Power Sweepers 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#ffffff; --fg:#1a1a1a; --muted:#6b6b6b; --grid:#e8e8e8;
+  --axis:#9a9a9a; --refline:#b0b0b0; --dot-bg:#d9dde3; --dot-border:#c2c7cf;
+  --whiff-lo:#cfe3f2; --whiff-hi:#0b4a78; --focus-ring:#e08a1e; --card:#f7f8fa;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#15171a; --fg:#f0f0f0; --muted:#9aa0a6; --grid:#2a2d31;
+    --axis:#6b7075; --refline:#4a4e53; --dot-bg:#3a3e44; --dot-border:#4a4e53;
+    --whiff-lo:#274b63; --whiff-hi:#7fc4f5; --focus-ring:#f0a94a; --card:#1d2024;
+  }
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:'Space Grotesk',system-ui,sans-serif;padding:16px 14px 12px;}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500;margin:0 0 4px;}
+h1{font-size:20px;font-weight:700;margin:0 0 6px;line-height:1.2;}
+.sub{font-size:13px;color:var(--muted);margin:0 0 14px;line-height:1.45;max-width:640px;}
+.wrap{position:relative;width:100%;height:440px;}
+.legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--muted);}
+.legend .ramp{display:inline-block;width:120px;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--whiff-lo),var(--whiff-hi));vertical-align:middle;}
+.legend .item{display:flex;align-items:center;gap:6px;}
+.legend .focusdot{width:11px;height:11px;border-radius:50%;background:var(--dot-bg);border:2px solid var(--focus-ring);display:inline-block;}
+.foot{margin-top:10px;font-size:10.5px;color:var(--muted);display:flex;justify-content:space-between;}
+.foot b{color:var(--muted);font-weight:500;}
+</style>
+</head>
+<body>
+<p class="eyebrow">2026 Sweepers &middot; Min 150 Thrown</p>
+<h1>The Power Sweeper</h1>
+<p class="sub">Every qualified sweeper this season, plotted by velocity against horizontal break. The hard throwers pull right, and the ones who trade sweep for speed sit low. Darker dots miss more bats.</p>
+<div class="wrap"><canvas id="c"></canvas></div>
+<div class="legend">
+  <span class="item">Whiff% <span class="ramp"></span> low &rarr; high</span>
+  <span class="item"><span class="focusdot"></span> highlighted arm</span>
+  <span class="item" style="color:var(--refline);">&#8942;&#8943; league average</span>
+</div>
+<div class="foot"><span>Data: Baseball Savant / Statcast</span><b>@jack_mariners</b></div>
+
+<script>
+const DATA = [{"name": "Luzardo, Jes\u00fas", "last": "Luzardo", "velo": 86.1, "sweep": 8.6, "whiff": 49.1, "xwoba": 0.183, "k": 52.5, "usage": 38.1, "pitches": 888, "focus": true}, {"name": "Fedde, Erick", "last": "Fedde", "velo": 81.9, "sweep": 15.8, "whiff": 21.1, "xwoba": 0.295, "k": 17.6, "usage": 37.0, "pitches": 674, "focus": false}, {"name": "Meyer, Max", "last": "Meyer", "velo": 89.0, "sweep": 8.9, "whiff": 35.7, "xwoba": 0.257, "k": 39.0, "usage": 30.0, "pitches": 537, "focus": true}, {"name": "Kirby, George", "last": "Kirby", "velo": 87.3, "sweep": 11.2, "whiff": 26.8, "xwoba": 0.264, "k": 29.3, "usage": 29.6, "pitches": 594, "focus": false}, {"name": "Williams, Gavin", "last": "Williams", "velo": 87.5, "sweep": 10.7, "whiff": 43.1, "xwoba": 0.217, "k": 45.9, "usage": 28.5, "pitches": 639, "focus": true}, {"name": "Manaea, Sean", "last": "Manaea", "velo": 75.8, "sweep": 12.9, "whiff": 31.4, "xwoba": 0.264, "k": 31.8, "usage": 30.8, "pitches": 554, "focus": false}, {"name": "Teng, Kai-Wei", "last": "Teng", "velo": 84.3, "sweep": 14.8, "whiff": 29.5, "xwoba": 0.298, "k": 29.4, "usage": 35.0, "pitches": 407, "focus": false}, {"name": "Gray, Sonny", "last": "Gray", "velo": 84.9, "sweep": 13.5, "whiff": 37.9, "xwoba": 0.195, "k": 45.8, "usage": 20.1, "pitches": 370, "focus": false}, {"name": "May, Dustin", "last": "May", "velo": 86.0, "sweep": 16.2, "whiff": 30.8, "xwoba": 0.288, "k": 37.6, "usage": 19.2, "pitches": 354, "focus": false}, {"name": "Abbott, Andrew", "last": "Abbott", "velo": 82.1, "sweep": 14.0, "whiff": 28.1, "xwoba": 0.237, "k": 32.7, "usage": 20.5, "pitches": 453, "focus": false}, {"name": "Rogers, Taylor", "last": "Rogers", "velo": 78.0, "sweep": 16.4, "whiff": 21.9, "xwoba": 0.259, "k": 18.6, "usage": 50.3, "pitches": 386, "focus": false}, {"name": "Perkins, Jack", "last": "Perkins", "velo": 86.1, "sweep": 12.1, "whiff": 36.4, "xwoba": 0.288, "k": 37.3, "usage": 28.6, "pitches": 377, "focus": false}, {"name": "Keller, Mitch", "last": "Keller", "velo": 82.0, "sweep": 17.2, "whiff": 24.0, "xwoba": 0.3, "k": 25.0, "usage": 16.0, "pitches": 302, "focus": false}, {"name": "Bruihl, Justin", "last": "Bruihl", "velo": 77.9, "sweep": 18.1, "whiff": 24.4, "xwoba": 0.252, "k": 24.7, "usage": 38.6, "pitches": 378, "focus": false}, {"name": "Zeferjahn, Ryan", "last": "Zeferjahn", "velo": 85.2, "sweep": 14.9, "whiff": 40.0, "xwoba": 0.246, "k": 34.7, "usage": 37.2, "pitches": 371, "focus": false}, {"name": "Ram\u00edrez, Yohan", "last": "Ram\u00edrez", "velo": 84.3, "sweep": 15.9, "whiff": 40.1, "xwoba": 0.226, "k": 42.6, "usage": 37.3, "pitches": 394, "focus": false}, {"name": "King, Michael", "last": "King", "velo": 82.1, "sweep": 12.9, "whiff": 29.0, "xwoba": 0.259, "k": 24.2, "usage": 20.2, "pitches": 450, "focus": false}, {"name": "Ohtani, Shohei", "last": "Ohtani", "velo": 85.0, "sweep": 15.0, "whiff": 37.7, "xwoba": 0.226, "k": 35.2, "usage": 29.4, "pitches": 393, "focus": false}, {"name": "Kerkering, Orion", "last": "Kerkering", "velo": 87.1, "sweep": 14.3, "whiff": 27.0, "xwoba": 0.263, "k": 26.7, "usage": 43.8, "pitches": 375, "focus": true}, {"name": "Singer, Brady", "last": "Singer", "velo": 82.0, "sweep": 7.3, "whiff": 40.2, "xwoba": 0.272, "k": 25.9, "usage": 16.1, "pitches": 335, "focus": false}, {"name": "Phillips, Tyler", "last": "Phillips", "velo": 84.2, "sweep": 12.0, "whiff": 33.3, "xwoba": 0.28, "k": 27.4, "usage": 23.9, "pitches": 354, "focus": false}, {"name": "Festa, Matt", "last": "Festa", "velo": 83.2, "sweep": 16.0, "whiff": 28.9, "xwoba": 0.329, "k": 16.7, "usage": 39.8, "pitches": 319, "focus": false}, {"name": "Bender, Anthony", "last": "Bender", "velo": 83.5, "sweep": 20.2, "whiff": 26.8, "xwoba": 0.201, "k": 37.3, "usage": 51.8, "pitches": 279, "focus": false}, {"name": "Gasser, Robert", "last": "Gasser", "velo": 80.3, "sweep": 13.9, "whiff": 26.2, "xwoba": 0.268, "k": 29.6, "usage": 26.6, "pitches": 296, "focus": false}, {"name": "Fluharty, Mason", "last": "Fluharty", "velo": 82.1, "sweep": 15.3, "whiff": 34.2, "xwoba": 0.234, "k": 28.4, "usage": 41.7, "pitches": 335, "focus": false}, {"name": "Webb, Logan", "last": "Webb", "velo": 84.1, "sweep": 14.3, "whiff": 23.7, "xwoba": 0.27, "k": 30.0, "usage": 19.4, "pitches": 386, "focus": false}, {"name": "Taillon, Jameson", "last": "Taillon", "velo": 80.2, "sweep": 15.5, "whiff": 33.8, "xwoba": 0.169, "k": 36.7, "usage": 16.4, "pitches": 232, "focus": false}, {"name": "Warren, Will", "last": "Warren", "velo": 84.0, "sweep": 17.3, "whiff": 21.0, "xwoba": 0.399, "k": 15.2, "usage": 19.5, "pitches": 376, "focus": false}, {"name": "Rogers, Trevor", "last": "Rogers", "velo": 78.2, "sweep": 10.5, "whiff": 31.0, "xwoba": 0.219, "k": 37.2, "usage": 13.1, "pitches": 257, "focus": false}, {"name": "Scott, Christian", "last": "Scott", "velo": 81.5, "sweep": 16.7, "whiff": 31.1, "xwoba": 0.238, "k": 37.2, "usage": 23.0, "pitches": 332, "focus": false}, {"name": "Cavalli, Cade", "last": "Cavalli", "velo": 86.0, "sweep": 14.5, "whiff": 28.8, "xwoba": 0.238, "k": 35.1, "usage": 12.2, "pitches": 263, "focus": false}, {"name": "Raley, Brooks", "last": "Raley", "velo": 80.7, "sweep": 17.3, "whiff": 20.5, "xwoba": 0.324, "k": 27.3, "usage": 37.7, "pitches": 255, "focus": false}, {"name": "Ryan, Joe", "last": "Ryan", "velo": 80.5, "sweep": 14.4, "whiff": 36.3, "xwoba": 0.23, "k": 37.3, "usage": 14.5, "pitches": 302, "focus": false}, {"name": "Griffin, Foster", "last": "Griffin", "velo": 79.9, "sweep": 17.0, "whiff": 32.8, "xwoba": 0.29, "k": 33.3, "usage": 14.5, "pitches": 310, "focus": false}, {"name": "Mejia, Juan", "last": "Mejia", "velo": 84.3, "sweep": 14.1, "whiff": 37.7, "xwoba": 0.291, "k": 33.3, "usage": 35.9, "pitches": 336, "focus": false}, {"name": "Lovelady, Richard", "last": "Lovelady", "velo": 81.8, "sweep": 14.1, "whiff": 25.2, "xwoba": 0.301, "k": 21.3, "usage": 42.9, "pitches": 231, "focus": false}, {"name": "Jax, Griffin", "last": "Jax", "velo": 87.7, "sweep": 12.8, "whiff": 37.0, "xwoba": 0.303, "k": 29.7, "usage": 25.2, "pitches": 354, "focus": false}, {"name": "Freeland, Kyle", "last": "Freeland", "velo": 82.7, "sweep": 8.6, "whiff": 32.5, "xwoba": 0.264, "k": 32.9, "usage": 11.3, "pitches": 208, "focus": false}, {"name": "Weathers, Ryan", "last": "Weathers", "velo": 81.2, "sweep": 13.5, "whiff": 37.5, "xwoba": 0.294, "k": 37.5, "usage": 20.6, "pitches": 414, "focus": false}, {"name": "Seymour, Ian", "last": "Seymour", "velo": 81.4, "sweep": 12.4, "whiff": 32.9, "xwoba": 0.284, "k": 31.9, "usage": 23.2, "pitches": 339, "focus": false}, {"name": "Antone, Tejay", "last": "Antone", "velo": 83.9, "sweep": 14.2, "whiff": 33.3, "xwoba": 0.213, "k": 29.2, "usage": 54.2, "pitches": 331, "focus": false}, {"name": "Severino, Luis", "last": "Severino", "velo": 84.9, "sweep": 17.3, "whiff": 28.8, "xwoba": 0.28, "k": 33.8, "usage": 24.6, "pitches": 267, "focus": false}, {"name": "Kay, Anthony", "last": "Kay", "velo": 82.8, "sweep": 13.0, "whiff": 36.8, "xwoba": 0.326, "k": 22.9, "usage": 22.8, "pitches": 471, "focus": false}, {"name": "Woo, Bryan", "last": "Woo", "velo": 84.4, "sweep": 10.5, "whiff": 34.7, "xwoba": 0.231, "k": 36.2, "usage": 11.4, "pitches": 222, "focus": false}, {"name": "Phillips, Connor", "last": "Phillips", "velo": 86.1, "sweep": 15.5, "whiff": 36.7, "xwoba": 0.305, "k": 26.5, "usage": 48.2, "pitches": 263, "focus": false}, {"name": "Bazardo, Eduard", "last": "Bazardo", "velo": 83.4, "sweep": 14.9, "whiff": 36.9, "xwoba": 0.318, "k": 27.9, "usage": 34.3, "pitches": 284, "focus": false}, {"name": "Junis, Jakob", "last": "Junis", "velo": 82.0, "sweep": 16.3, "whiff": 19.1, "xwoba": 0.294, "k": 19.1, "usage": 43.5, "pitches": 254, "focus": false}, {"name": "Lawrence, Justin", "last": "Lawrence", "velo": 82.1, "sweep": 17.2, "whiff": 45.5, "xwoba": 0.264, "k": 46.3, "usage": 43.7, "pitches": 299, "focus": false}, {"name": "Faucher, Calvin", "last": "Faucher", "velo": 87.7, "sweep": 14.8, "whiff": 31.7, "xwoba": 0.241, "k": 37.9, "usage": 24.1, "pitches": 215, "focus": false}, {"name": "Leahy, Kyle", "last": "Leahy", "velo": 84.8, "sweep": 16.7, "whiff": 27.6, "xwoba": 0.332, "k": 28.1, "usage": 13.4, "pitches": 248, "focus": false}, {"name": "Anderson, Grant", "last": "Anderson", "velo": 81.1, "sweep": 12.2, "whiff": 38.0, "xwoba": 0.207, "k": 32.8, "usage": 36.5, "pitches": 269, "focus": false}, {"name": "Romero, JoJo", "last": "Romero", "velo": 83.0, "sweep": 16.1, "whiff": 26.9, "xwoba": 0.334, "k": 31.3, "usage": 36.1, "pitches": 260, "focus": false}, {"name": "Sewald, Paul", "last": "Sewald", "velo": 83.0, "sweep": 11.2, "whiff": 38.5, "xwoba": 0.275, "k": 36.5, "usage": 40.6, "pitches": 257, "focus": false}, {"name": "Warren, Austin", "last": "Warren", "velo": 85.0, "sweep": 15.5, "whiff": 26.9, "xwoba": 0.371, "k": 17.5, "usage": 47.7, "pitches": 311, "focus": false}, {"name": "Klein, Will", "last": "Klein", "velo": 88.6, "sweep": 13.0, "whiff": 28.2, "xwoba": 0.264, "k": 32.3, "usage": 28.3, "pitches": 216, "focus": false}, {"name": "Herget, Jimmy", "last": "Herget", "velo": 78.0, "sweep": 14.9, "whiff": 29.7, "xwoba": 0.244, "k": 29.5, "usage": 31.1, "pitches": 188, "focus": false}, {"name": "Hancock, Emerson", "last": "Hancock", "velo": 77.1, "sweep": 16.4, "whiff": 37.8, "xwoba": 0.169, "k": 43.3, "usage": 16.1, "pitches": 307, "focus": false}, {"name": "Imanaga, Shota", "last": "Imanaga", "velo": 81.1, "sweep": 14.0, "whiff": 28.9, "xwoba": 0.333, "k": 25.0, "usage": 14.7, "pitches": 304, "focus": false}, {"name": "Holderman, Colin", "last": "Holderman", "velo": 85.0, "sweep": 10.7, "whiff": 43.0, "xwoba": 0.196, "k": 40.7, "usage": 33.7, "pitches": 243, "focus": false}, {"name": "Arrighetti, Spencer", "last": "Arrighetti", "velo": 79.5, "sweep": 16.1, "whiff": 26.1, "xwoba": 0.282, "k": 25.9, "usage": 12.4, "pitches": 186, "focus": false}, {"name": "Nunez, Anthony", "last": "Nunez", "velo": 86.0, "sweep": 15.5, "whiff": 47.1, "xwoba": 0.216, "k": 39.7, "usage": 29.3, "pitches": 225, "focus": true}, {"name": "Skenes, Paul", "last": "Skenes", "velo": 84.3, "sweep": 10.2, "whiff": 30.3, "xwoba": 0.203, "k": 34.5, "usage": 15.9, "pitches": 352, "focus": false}, {"name": "Blubaugh, AJ", "last": "Blubaugh", "velo": 84.3, "sweep": 12.5, "whiff": 36.0, "xwoba": 0.244, "k": 28.1, "usage": 21.5, "pitches": 271, "focus": false}, {"name": "Moll, Sam", "last": "Moll", "velo": 81.2, "sweep": 14.6, "whiff": 38.7, "xwoba": 0.216, "k": 39.3, "usage": 36.4, "pitches": 317, "focus": false}, {"name": "Lugo, Seth", "last": "Lugo", "velo": 79.1, "sweep": 16.9, "whiff": 16.5, "xwoba": 0.408, "k": 10.9, "usage": 10.4, "pitches": 224, "focus": false}, {"name": "G\u00f3mez, Yoendrys", "last": "G\u00f3mez", "velo": 84.4, "sweep": 13.2, "whiff": 37.8, "xwoba": 0.222, "k": 36.4, "usage": 24.6, "pitches": 210, "focus": false}, {"name": "Wheeler, Zack", "last": "Wheeler", "velo": 81.2, "sweep": 17.4, "whiff": 36.5, "xwoba": 0.248, "k": 30.9, "usage": 14.4, "pitches": 253, "focus": false}, {"name": "Garcia, Julian", "last": "Garcia", "velo": 82.2, "sweep": 12.1, "whiff": 33.0, "xwoba": 0.249, "k": 27.3, "usage": 56.5, "pitches": 205, "focus": false}, {"name": "P\u00e9rez, Eury", "last": "P\u00e9rez", "velo": 83.7, "sweep": 8.7, "whiff": 35.0, "xwoba": 0.213, "k": 37.0, "usage": 14.1, "pitches": 253, "focus": false}, {"name": "Junk, Janson", "last": "Junk", "velo": 80.2, "sweep": 15.0, "whiff": 16.0, "xwoba": 0.334, "k": 14.8, "usage": 13.4, "pitches": 176, "focus": false}, {"name": "McLean, Nolan", "last": "McLean", "velo": 84.9, "sweep": 18.4, "whiff": 28.0, "xwoba": 0.383, "k": 16.7, "usage": 14.5, "pitches": 314, "focus": false}, {"name": "Svanson, Matt", "last": "Svanson", "velo": 86.6, "sweep": 10.7, "whiff": 27.7, "xwoba": 0.3, "k": 31.5, "usage": 32.2, "pitches": 254, "focus": false}, {"name": "Poulin, PJ", "last": "Poulin", "velo": 79.0, "sweep": 7.7, "whiff": 29.0, "xwoba": 0.336, "k": 26.4, "usage": 35.3, "pitches": 224, "focus": false}, {"name": "O'Brien, Riley", "last": "O'Brien", "velo": 83.3, "sweep": 15.1, "whiff": 47.4, "xwoba": 0.238, "k": 40.8, "usage": 30.2, "pitches": 239, "focus": false}, {"name": "Watson, Ryan", "last": "Watson", "velo": 84.9, "sweep": 11.7, "whiff": 34.0, "xwoba": 0.226, "k": 32.7, "usage": 21.7, "pitches": 198, "focus": false}, {"name": "Rea, Colin", "last": "Rea", "velo": 82.9, "sweep": 15.3, "whiff": 29.8, "xwoba": 0.199, "k": 30.6, "usage": 8.9, "pitches": 178, "focus": false}, {"name": "Soto, Gregory", "last": "Soto", "velo": 82.6, "sweep": 12.5, "whiff": 45.2, "xwoba": 0.147, "k": 56.3, "usage": 17.5, "pitches": 152, "focus": false}, {"name": "Bachar, Lake", "last": "Bachar", "velo": 86.5, "sweep": 8.3, "whiff": 37.2, "xwoba": 0.351, "k": 29.2, "usage": 18.1, "pitches": 187, "focus": false}, {"name": "Hudson, Bryan", "last": "Hudson", "velo": 80.4, "sweep": 14.8, "whiff": 24.2, "xwoba": 0.25, "k": 18.8, "usage": 26.5, "pitches": 214, "focus": false}, {"name": "Sterner, Justin", "last": "Sterner", "velo": 81.4, "sweep": 14.5, "whiff": 43.3, "xwoba": 0.196, "k": 38.3, "usage": 29.6, "pitches": 215, "focus": false}, {"name": "Sproat, Brandon", "last": "Sproat", "velo": 86.2, "sweep": 13.2, "whiff": 40.3, "xwoba": 0.254, "k": 40.4, "usage": 10.3, "pitches": 174, "focus": false}, {"name": "Pfaadt, Brandon", "last": "Pfaadt", "velo": 84.3, "sweep": 10.3, "whiff": 28.6, "xwoba": 0.209, "k": 26.1, "usage": 13.3, "pitches": 173, "focus": false}, {"name": "Hart, Kyle", "last": "Hart", "velo": 83.1, "sweep": 16.8, "whiff": 23.9, "xwoba": 0.264, "k": 19.6, "usage": 27.5, "pitches": 206, "focus": false}, {"name": "Dom\u00ednguez, Seranthony", "last": "Dom\u00ednguez", "velo": 85.1, "sweep": 10.6, "whiff": 33.3, "xwoba": 0.253, "k": 30.4, "usage": 29.3, "pitches": 227, "focus": false}, {"name": "Ure\u00f1a, Walbert", "last": "Ure\u00f1a", "velo": 86.6, "sweep": 8.1, "whiff": 35.9, "xwoba": 0.251, "k": 35.6, "usage": 15.3, "pitches": 267, "focus": false}, {"name": "King, Bryan", "last": "King", "velo": 81.0, "sweep": 13.6, "whiff": 19.6, "xwoba": 0.371, "k": 13.3, "usage": 28.2, "pitches": 230, "focus": false}, {"name": "Gibson, Cade", "last": "Gibson", "velo": 80.4, "sweep": 21.5, "whiff": 24.4, "xwoba": 0.292, "k": 31.8, "usage": 26.9, "pitches": 152, "focus": false}, {"name": "Roberts, Ethan", "last": "Roberts", "velo": 83.5, "sweep": 19.8, "whiff": 30.9, "xwoba": 0.325, "k": 23.3, "usage": 38.8, "pitches": 169, "focus": false}, {"name": "Bird, Jake", "last": "Bird", "velo": 84.4, "sweep": 14.1, "whiff": 36.5, "xwoba": 0.248, "k": 32.6, "usage": 37.4, "pitches": 208, "focus": false}, {"name": "Schultz, Noah", "last": "Schultz", "velo": 82.7, "sweep": 14.5, "whiff": 32.5, "xwoba": 0.442, "k": 33.3, "usage": 18.2, "pitches": 209, "focus": false}, {"name": "Ober, Bailey", "last": "Ober", "velo": 76.2, "sweep": 12.2, "whiff": 40.3, "xwoba": 0.164, "k": 35.7, "usage": 11.8, "pitches": 169, "focus": false}, {"name": "Gilbert, Logan", "last": "Gilbert", "velo": 81.1, "sweep": 15.0, "whiff": 35.7, "xwoba": 0.22, "k": 31.0, "usage": 7.7, "pitches": 167, "focus": false}, {"name": "Barlow, Scott", "last": "Barlow", "velo": 79.2, "sweep": 10.9, "whiff": 32.9, "xwoba": 0.408, "k": 12.2, "usage": 35.5, "pitches": 206, "focus": false}, {"name": "Schreiber, John", "last": "Schreiber", "velo": 82.3, "sweep": 14.6, "whiff": 27.8, "xwoba": 0.371, "k": 15.0, "usage": 27.8, "pitches": 203, "focus": false}, {"name": "McGreevy, Michael", "last": "McGreevy", "velo": 81.6, "sweep": 14.0, "whiff": 25.3, "xwoba": 0.486, "k": 15.0, "usage": 10.1, "pitches": 205, "focus": false}, {"name": "Alcantara, Sandy", "last": "Alcantara", "velo": 84.3, "sweep": 12.2, "whiff": 26.7, "xwoba": 0.246, "k": 32.5, "usage": 8.9, "pitches": 220, "focus": false}, {"name": "Treinen, Blake", "last": "Treinen", "velo": 83.8, "sweep": 13.2, "whiff": 36.8, "xwoba": 0.394, "k": 32.5, "usage": 41.7, "pitches": 156, "focus": false}, {"name": "Bello, Brayan", "last": "Bello", "velo": 85.7, "sweep": 7.9, "whiff": 27.1, "xwoba": 0.181, "k": 27.5, "usage": 12.6, "pitches": 170, "focus": false}, {"name": "Littell, Zack", "last": "Littell", "velo": 79.3, "sweep": 12.3, "whiff": 19.1, "xwoba": 0.282, "k": 17.9, "usage": 8.9, "pitches": 162, "focus": false}, {"name": "Weiss, Ryan", "last": "Weiss", "velo": 83.8, "sweep": 15.7, "whiff": 32.4, "xwoba": 0.316, "k": 35.9, "usage": 32.3, "pitches": 171, "focus": false}, {"name": "Lambert, Peter", "last": "Lambert", "velo": 82.7, "sweep": 15.9, "whiff": 27.5, "xwoba": 0.289, "k": 21.6, "usage": 8.3, "pitches": 156, "focus": false}, {"name": "Hicks, Jordan", "last": "Hicks", "velo": 86.9, "sweep": 6.6, "whiff": 45.8, "xwoba": 0.258, "k": 35.1, "usage": 32.7, "pitches": 194, "focus": false}, {"name": "Lord, Brad", "last": "Lord", "velo": 83.2, "sweep": 11.0, "whiff": 20.3, "xwoba": 0.371, "k": 27.8, "usage": 14.2, "pitches": 155, "focus": false}, {"name": "Milner, Hoby", "last": "Milner", "velo": 78.3, "sweep": 14.4, "whiff": 23.5, "xwoba": 0.237, "k": 20.0, "usage": 28.5, "pitches": 162, "focus": false}, {"name": "Mlodzinski, Carmen", "last": "Mlodzinski", "velo": 83.5, "sweep": 12.2, "whiff": 22.7, "xwoba": 0.294, "k": 31.4, "usage": 10.5, "pitches": 172, "focus": false}, {"name": "Painter, Andrew", "last": "Painter", "velo": 82.8, "sweep": 16.4, "whiff": 22.6, "xwoba": 0.324, "k": 11.4, "usage": 13.7, "pitches": 189, "focus": false}, {"name": "Holmes, Clay", "last": "Holmes", "velo": 81.9, "sweep": 16.9, "whiff": 32.4, "xwoba": 0.192, "k": 50.0, "usage": 19.6, "pitches": 176, "focus": false}, {"name": "Sugano, Tomoyuki", "last": "Sugano", "velo": 83.7, "sweep": 8.8, "whiff": 17.4, "xwoba": 0.327, "k": 6.1, "usage": 10.4, "pitches": 179, "focus": false}, {"name": "Dobnak, Randy", "last": "Dobnak", "velo": 82.2, "sweep": 8.1, "whiff": 35.5, "xwoba": 0.346, "k": 22.6, "usage": 26.9, "pitches": 166, "focus": false}, {"name": "Johnson, Ryan", "last": "Johnson", "velo": 79.9, "sweep": 9.3, "whiff": 33.8, "xwoba": 0.33, "k": 16.1, "usage": 16.6, "pitches": 152, "focus": false}, {"name": "Agnos, Zach", "last": "Agnos", "velo": 84.2, "sweep": 13.9, "whiff": 36.8, "xwoba": 0.225, "k": 30.0, "usage": 14.9, "pitches": 168, "focus": false}, {"name": "Armstrong, Shawn", "last": "Armstrong", "velo": 84.5, "sweep": 12.3, "whiff": 29.7, "xwoba": 0.196, "k": 32.1, "usage": 27.5, "pitches": 164, "focus": false}];
+const AVG_VELO = 83.0, AVG_SWEEP = 13.7;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+function lerp(a,b,t){return a+(b-a)*t;}
+function hexToRgb(h){h=h.replace('#','');return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function whiffColor(w){
+  const lo=hexToRgb(css('--whiff-lo')), hi=hexToRgb(css('--whiff-hi'));
+  const wMin=16, wMax=49;
+  const t=Math.max(0,Math.min(1,(w-wMin)/(wMax-wMin)));
+  return `rgb(${Math.round(lerp(lo[0],hi[0],t))},${Math.round(lerp(lo[1],hi[1],t))},${Math.round(lerp(lo[2],hi[2],t))})`;
+}
+
+const focus = DATA.filter(d=>d.focus);
+const rest = DATA.filter(d=>!d.focus);
+
+const mkPoints = arr => arr.map(d=>({x:d.velo,y:d.sweep,r:Math.max(4,Math.min(11,Math.sqrt(d.pitches)/6)),raw:d}));
+
+const refPlugin = {
+  id:'ref',
+  beforeDatasetsDraw(chart){
+    const {ctx,chartArea:ca,scales}=chart;
+    const xv=scales.x.getPixelForValue(AVG_VELO);
+    const yv=scales.y.getPixelForValue(AVG_SWEEP);
+    ctx.save();
+    ctx.strokeStyle=css('--refline');ctx.lineWidth=1;ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(xv,ca.top);ctx.lineTo(xv,ca.bottom);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(ca.left,yv);ctx.lineTo(ca.right,yv);ctx.stroke();
+    ctx.restore();
+  }
+};
+
+const labelPlugin = {
+  id:'labels',
+  afterDatasetsDraw(chart){
+    const {ctx,scales}=chart;
+    ctx.save();
+    ctx.font='700 11px "Space Grotesk"';
+    ctx.fillStyle=css('--fg');
+    const placed=[];
+    const cands=focus.map(d=>({
+      x:scales.x.getPixelForValue(d.velo),
+      y:scales.y.getPixelForValue(d.sweep),
+      t:d.last
+    })).sort((a,b)=>a.y-b.y);
+    cands.forEach(c=>{
+      let lx=c.x+9, ly=c.y-7;
+      for(let i=0;i<6;i++){
+        const clash=placed.some(p=>Math.abs(p.ly-ly)<13 && Math.abs(p.lx-lx)<60);
+        if(!clash)break; ly-=13;
+      }
+      if(Math.abs(ly-(c.y-7))>6){
+        ctx.strokeStyle=css('--axis');ctx.lineWidth=0.8;
+        ctx.beginPath();ctx.moveTo(c.x,c.y);ctx.lineTo(lx-2,ly+3);ctx.stroke();
+      }
+      ctx.fillText(c.t,lx,ly+4);
+      placed.push({lx,ly});
+    });
+    ctx.restore();
+  }
+};
+
+new Chart(document.getElementById('c'),{
+  type:'bubble',
+  data:{datasets:[
+    {label:'rest',data:mkPoints(rest),
+      backgroundColor:c=>c.raw?whiffColor(c.raw.raw.whiff):css('--dot-bg'),
+      borderColor:css('--dot-border'),borderWidth:0.5},
+    {label:'focus',data:mkPoints(focus),
+      backgroundColor:c=>c.raw?whiffColor(c.raw.raw.whiff):css('--dot-bg'),
+      borderColor:css('--focus-ring'),borderWidth:2.5}
+  ]},
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    layout:{padding:{top:6,right:12,bottom:2,left:2}},
+    scales:{
+      x:{min:75,max:90,title:{display:true,text:'Velocity (mph)',color:css('--muted'),font:{family:'Space Grotesk',size:12,weight:'500'}},
+         grid:{color:css('--grid')},ticks:{color:css('--axis'),font:{family:'Space Mono',size:10}}},
+      y:{min:5,max:22.5,title:{display:true,text:'Horizontal break (in)',color:css('--muted'),font:{family:'Space Grotesk',size:12,weight:'500'}},
+         grid:{color:css('--grid')},ticks:{color:css('--axis'),font:{family:'Space Mono',size:10}}}
+    },
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        callbacks:{
+          title:items=>{if(!items.length)return '';return items[0].raw.raw.name;},
+          label:items=>{if(!items||!items.raw)return '';const d=items.raw.raw;
+            return [`Velo ${d.velo} mph  |  Sweep ${d.sweep}"`,
+                    `Whiff ${d.whiff}%  |  K ${d.k}%`,
+                    `xwOBA ${d.xwoba.toFixed(3)}`,
+                    `Usage ${d.usage}%  |  ${d.pitches} thrown`];}
+        },
+        backgroundColor:css('--card'),titleColor:css('--fg'),bodyColor:css('--muted'),
+        borderColor:css('--dot-border'),borderWidth:1,padding:9,
+        titleFont:{family:'Space Grotesk',weight:'700',size:12.5},
+        bodyFont:{family:'Space Mono',size:11},displayColors:false
+      }
+    }
+  },
+  plugins:[refPlugin,labelPlugin]
+});
+</script>
+</body>
+</html>
