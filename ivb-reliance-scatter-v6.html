@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IVB reliance scatter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+    --bg:#ffffff;
+    --text:#1c1b19;--muted:#8a8880;--faint:#b8b6ac;
+    --grid:#ecebe4;--axis:#8a8880;--ref:#c3c2b7;
+    --imp:#2a78d6;--imp-fill:rgba(42,120,214,.6);
+    --dec:#e0642a;--dec-fill:rgba(224,100,42,.6);
+}
+@media(prefers-color-scheme:dark){:root{
+    --bg:#16150f;
+    --text:#f2f0e6;--muted:#9c9a8f;--faint:#6b6a60;
+    --grid:#2a2822;--axis:#9c9a8f;--ref:#444;
+    --imp:#4f97ec;--imp-fill:rgba(79,151,236,.6);
+    --dec:#f0824c;--dec-fill:rgba(240,130,76,.6);
+}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif}
+.wrap{max-width:780px;margin:0 auto;padding:18px 16px 10px}
+.eyebrow{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+h1{font-size:23px;line-height:1.2;font-weight:700;margin:0 0 10px}
+.sub{font-size:14px;line-height:1.5;color:var(--muted);margin:0 0 14px;max-width:64ch}
+.chartbox{position:relative;width:100%;height:560px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin:10px 2px 2px;font-size:13px;color:var(--muted)}
+.legend .item{display:flex;align-items:center;gap:7px}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+.footer{margin:14px 2px 4px;padding-top:10px;border-top:1px solid var(--grid);
+        display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+        font-size:11.5px;color:var(--muted);font-family:'Space Mono',monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">RotoGraphs &middot; Four-seam IVB tracker</p>
+  <h1>Which four-seams run on ride, and where is it heading?</h1>
+  <p class="sub">Every dot is a qualified four-seam starter. The horizontal axis measures how tightly a pitcher's start-by-start IVB correlates with his fastball run value this season (further left means more reliant on ride). The vertical axis tracks how far his IVB has moved across the season. Blue dots are the 20 most IVB-reliant starters.</p>
+  <div class="chartbox"><canvas id="c"></canvas></div>
+  <div class="legend">
+    <span class="item"><span class="dot" style="background:var(--imp)"></span>IVB-reliant</span>
+    <span class="item"><span class="dot" style="background:var(--faint)"></span>Other starters</span>
+  </div>
+  <div class="footer">
+    <span>Data: Baseball Savant via pybaseball, 2026 through Aug 27 | @jack_mariners</span>
+  </div>
+</div>
+<script>
+const DATA = [{"name":"Ashcraft, Braxton","label":"Ashcraft","x":-0.579,"y":-0.262,"ff_pct":31.0,"r_rv":-0.579,"r_csw":0.342,"top":true},{"name":"Liberatore, Matthew","label":"Liberatore","x":-0.505,"y":0.116,"ff_pct":30.7,"r_rv":-0.505,"r_csw":0.406,"top":true},{"name":"Prielipp, Connor","label":"Prielipp","x":-0.447,"y":-0.718,"ff_pct":27.4,"r_rv":-0.447,"r_csw":-0.28,"top":true},{"name":"Abbott, Andrew","label":"Abbott","x":-0.427,"y":-0.316,"ff_pct":44.3,"r_rv":-0.427,"r_csw":0.327,"top":true},{"name":"Ohtani, Shohei","label":"Ohtani","x":-0.408,"y":-1.228,"ff_pct":45.1,"r_rv":-0.408,"r_csw":0.436,"top":true},{"name":"Harrison, Kyle","label":"Harrison","x":-0.407,"y":-0.822,"ff_pct":57.7,"r_rv":-0.407,"r_csw":-0.088,"top":true},{"name":"Lambert, Peter","label":"Lambert","x":-0.332,"y":0.129,"ff_pct":31.5,"r_rv":-0.332,"r_csw":0.516,"top":true},{"name":"Matthews, Zebby","label":"Matthews","x":-0.314,"y":0.515,"ff_pct":36.4,"r_rv":-0.314,"r_csw":0.559,"top":true},{"name":"P\u00e9rez, Eury","label":"P\u00e9rez","x":-0.285,"y":0.38,"ff_pct":38.5,"r_rv":-0.285,"r_csw":0.165,"top":true},{"name":"Kirby, George","label":"Kirby","x":-0.28,"y":0.808,"ff_pct":28.8,"r_rv":-0.28,"r_csw":0.299,"top":true},{"name":"Rasmussen, Drew","label":"Rasmussen","x":-0.273,"y":1.966,"ff_pct":28.8,"r_rv":-0.273,"r_csw":0.186,"top":true},{"name":"Keller, Mitch","label":"Keller","x":-0.266,"y":-2.278,"ff_pct":31.9,"r_rv":-0.266,"r_csw":-0.248,"top":true},{"name":"Bibee, Tanner","label":"Bibee","x":-0.263,"y":-2.091,"ff_pct":22.6,"r_rv":-0.263,"r_csw":0.086,"top":true},{"name":"Severino, Luis","label":"Severino","x":-0.261,"y":-0.749,"ff_pct":21.2,"r_rv":-0.261,"r_csw":-0.166,"top":true},{"name":"Sale, Chris","label":"Sale","x":-0.256,"y":0.812,"ff_pct":41.3,"r_rv":-0.256,"r_csw":0.188,"top":true},{"name":"Rodriguez, Eduardo","label":"Rodriguez","x":-0.246,"y":-0.113,"ff_pct":39.7,"r_rv":-0.246,"r_csw":0.121,"top":true},{"name":"Melton, Troy","label":"Melton","x":-0.24,"y":0.492,"ff_pct":33.4,"r_rv":-0.24,"r_csw":0.3,"top":true},{"name":"Gore, MacKenzie","label":"Gore","x":-0.239,"y":-0.671,"ff_pct":46.5,"r_rv":-0.239,"r_csw":0.299,"top":true},{"name":"Springs, Jeffrey","label":"Springs","x":-0.234,"y":-1.762,"ff_pct":43.8,"r_rv":-0.234,"r_csw":0.256,"top":true},{"name":"Sproat, Brandon","label":"Sproat","x":-0.223,"y":-0.258,"ff_pct":23.9,"r_rv":-0.223,"r_csw":0.055,"top":true},{"name":"Boyd, Matthew","label":"Boyd","x":-0.221,"y":-1.982,"ff_pct":44.1,"r_rv":-0.221,"r_csw":0.055,"top":false},{"name":"Rea, Colin","label":"Rea","x":-0.214,"y":-1.395,"ff_pct":42.4,"r_rv":-0.214,"r_csw":0.003,"top":false},{"name":"Leiter, Jack","label":"Leiter","x":-0.206,"y":-1.031,"ff_pct":38.5,"r_rv":-0.206,"r_csw":0.483,"top":false},{"name":"Yesavage, Trey","label":"Yesavage","x":-0.185,"y":-1.346,"ff_pct":46.6,"r_rv":-0.185,"r_csw":-0.34,"top":false},{"name":"Burns, Chase","label":"Burns","x":-0.176,"y":-0.269,"ff_pct":56.1,"r_rv":-0.176,"r_csw":0.259,"top":false},{"name":"Warren, Will","label":"Warren","x":-0.176,"y":-1.358,"ff_pct":35.9,"r_rv":-0.176,"r_csw":0.057,"top":false},{"name":"Nelson, Ryne","label":"Nelson","x":-0.167,"y":-0.333,"ff_pct":56.6,"r_rv":-0.167,"r_csw":0.643,"top":false},{"name":"Elder, Bryce","label":"Elder","x":-0.167,"y":-0.564,"ff_pct":22.5,"r_rv":-0.167,"r_csw":0.266,"top":false},{"name":"Jump, Gage","label":"Jump","x":-0.159,"y":-0.324,"ff_pct":46.3,"r_rv":-0.159,"r_csw":-0.195,"top":false},{"name":"Burke, Sean","label":"Burke","x":-0.148,"y":-1.184,"ff_pct":37.0,"r_rv":-0.148,"r_csw":0.432,"top":false},{"name":"Skubal, Tarik","label":"Skubal","x":-0.147,"y":-0.748,"ff_pct":35.9,"r_rv":-0.147,"r_csw":0.429,"top":false},{"name":"Hancock, Emerson","label":"Hancock","x":-0.142,"y":-3.714,"ff_pct":39.1,"r_rv":-0.142,"r_csw":-0.008,"top":false},{"name":"Mahle, Tyler","label":"Mahle","x":-0.139,"y":-0.906,"ff_pct":48.2,"r_rv":-0.139,"r_csw":0.282,"top":false},{"name":"Freeland, Kyle","label":"Freeland","x":-0.134,"y":-1.444,"ff_pct":23.6,"r_rv":-0.134,"r_csw":0.305,"top":false},{"name":"Chandler, Bubba","label":"Chandler","x":-0.13,"y":-1.88,"ff_pct":47.9,"r_rv":-0.13,"r_csw":-0.125,"top":false},{"name":"V\u00e1squez, Randy","label":"V\u00e1squez","x":-0.108,"y":-0.6,"ff_pct":30.7,"r_rv":-0.108,"r_csw":0.222,"top":false},{"name":"Schlittler, Cam","label":"Schlittler","x":-0.107,"y":-0.971,"ff_pct":44.0,"r_rv":-0.107,"r_csw":0.367,"top":false},{"name":"May, Dustin","label":"May","x":-0.105,"y":0.672,"ff_pct":25.5,"r_rv":-0.105,"r_csw":0.073,"top":false},{"name":"Peralta, Freddy","label":"Peralta","x":-0.101,"y":-1.511,"ff_pct":52.6,"r_rv":-0.101,"r_csw":0.355,"top":false},{"name":"Cantillo, Joey","label":"Cantillo","x":-0.094,"y":-1.968,"ff_pct":32.9,"r_rv":-0.094,"r_csw":0.304,"top":false},{"name":"Flaherty, Jack","label":"Flaherty","x":-0.092,"y":-0.427,"ff_pct":49.1,"r_rv":-0.092,"r_csw":0.271,"top":false},{"name":"Cavalli, Cade","label":"Cavalli","x":-0.089,"y":-0.756,"ff_pct":32.7,"r_rv":-0.089,"r_csw":-0.054,"top":false},{"name":"Suarez, Ranger","label":"Suarez","x":-0.087,"y":-1.483,"ff_pct":22.7,"r_rv":-0.087,"r_csw":-0.002,"top":false},{"name":"Holmes, Grant","label":"Holmes","x":-0.083,"y":-0.794,"ff_pct":28.6,"r_rv":-0.083,"r_csw":0.061,"top":false},{"name":"Bradley, Taj","label":"Bradley","x":-0.082,"y":-1.344,"ff_pct":46.7,"r_rv":-0.082,"r_csw":0.085,"top":false},{"name":"Wacha, Michael","label":"Wacha","x":-0.075,"y":-1.744,"ff_pct":26.7,"r_rv":-0.075,"r_csw":0.08,"top":false},{"name":"Wheeler, Zack","label":"Wheeler","x":-0.071,"y":-0.375,"ff_pct":34.7,"r_rv":-0.071,"r_csw":-0.259,"top":false},{"name":"Gilbert, Logan","label":"Gilbert","x":-0.068,"y":-0.161,"ff_pct":39.7,"r_rv":-0.068,"r_csw":-0.014,"top":false},{"name":"Cecconi, Slade","label":"Cecconi","x":-0.064,"y":-1.537,"ff_pct":26.6,"r_rv":-0.064,"r_csw":0.474,"top":false},{"name":"Lauer, Eric","label":"Lauer","x":-0.051,"y":-1.576,"ff_pct":41.6,"r_rv":-0.051,"r_csw":0.6,"top":false},{"name":"Ober, Bailey","label":"Ober","x":-0.044,"y":-2.36,"ff_pct":32.7,"r_rv":-0.044,"r_csw":0.289,"top":false},{"name":"Peterson, David","label":"Peterson","x":-0.038,"y":-2.656,"ff_pct":24.2,"r_rv":-0.038,"r_csw":0.053,"top":false},{"name":"Irvin, Jake","label":"Irvin","x":-0.037,"y":-0.092,"ff_pct":28.6,"r_rv":-0.037,"r_csw":-0.347,"top":false},{"name":"Weathers, Ryan","label":"Weathers","x":-0.031,"y":0.466,"ff_pct":22.2,"r_rv":-0.031,"r_csw":-0.083,"top":false},{"name":"Miller, Bryce","label":"Miller","x":-0.026,"y":-0.213,"ff_pct":39.6,"r_rv":-0.026,"r_csw":0.151,"top":false},{"name":"Williams, Gavin","label":"Williams","x":-0.017,"y":-0.454,"ff_pct":26.1,"r_rv":-0.017,"r_csw":0.243,"top":false},{"name":"Sheehan, Emmet","label":"Sheehan","x":-0.014,"y":0.4,"ff_pct":42.6,"r_rv":-0.014,"r_csw":0.03,"top":false},{"name":"Castillo, Luis","label":"Castillo","x":-0.006,"y":-2.866,"ff_pct":42.6,"r_rv":-0.006,"r_csw":0.105,"top":false},{"name":"Messick, Parker","label":"Messick","x":0.003,"y":-0.376,"ff_pct":39.8,"r_rv":0.003,"r_csw":0.115,"top":false},{"name":"McClanahan, Shane","label":"McClanahan","x":0.009,"y":-0.131,"ff_pct":38.1,"r_rv":0.009,"r_csw":0.363,"top":false},{"name":"Skenes, Paul","label":"Skenes","x":0.014,"y":-0.019,"ff_pct":41.2,"r_rv":0.014,"r_csw":-0.068,"top":false},{"name":"Kay, Anthony","label":"Kay","x":0.015,"y":-0.533,"ff_pct":22.5,"r_rv":0.015,"r_csw":-0.101,"top":false},{"name":"Misiorowski, Jacob","label":"Misiorowski","x":0.018,"y":-1.021,"ff_pct":63.5,"r_rv":0.018,"r_csw":-0.039,"top":false},{"name":"Sasaki, Roki","label":"Sasaki","x":0.019,"y":0.797,"ff_pct":41.9,"r_rv":0.019,"r_csw":0.292,"top":false},{"name":"Martin, Davis","label":"Martin","x":0.029,"y":-2.443,"ff_pct":26.6,"r_rv":0.029,"r_csw":0.213,"top":false},{"name":"Meyer, Max","label":"Meyer","x":0.032,"y":0.178,"ff_pct":24.0,"r_rv":0.032,"r_csw":-0.294,"top":false},{"name":"Ryan, Joe","label":"Ryan","x":0.035,"y":-1.866,"ff_pct":45.7,"r_rv":0.035,"r_csw":0.484,"top":false},{"name":"McGreevy, Michael","label":"McGreevy","x":0.036,"y":-1.26,"ff_pct":24.6,"r_rv":0.036,"r_csw":-0.229,"top":false},{"name":"Scott, Christian","label":"Scott","x":0.045,"y":-0.066,"ff_pct":47.7,"r_rv":0.045,"r_csw":-0.11,"top":false},{"name":"Cease, Dylan","label":"Cease","x":0.046,"y":-0.896,"ff_pct":36.8,"r_rv":0.046,"r_csw":0.294,"top":false},{"name":"Lowder, Rhett","label":"Lowder","x":0.049,"y":-0.607,"ff_pct":20.4,"r_rv":0.049,"r_csw":-0.179,"top":false},{"name":"Junk, Janson","label":"Junk","x":0.055,"y":-0.914,"ff_pct":35.7,"r_rv":0.055,"r_csw":-0.005,"top":false},{"name":"Pfaadt, Brandon","label":"Pfaadt","x":0.059,"y":0.465,"ff_pct":25.6,"r_rv":0.059,"r_csw":0.425,"top":false},{"name":"deGrom, Jacob","label":"deGrom","x":0.061,"y":-0.395,"ff_pct":42.2,"r_rv":0.061,"r_csw":0.131,"top":false},{"name":"Cameron, Noah","label":"Cameron","x":0.063,"y":-0.551,"ff_pct":24.7,"r_rv":0.063,"r_csw":0.243,"top":false},{"name":"Jones, Jared","label":"Jones","x":0.065,"y":0.346,"ff_pct":46.7,"r_rv":0.065,"r_csw":0.218,"top":false},{"name":"Nola, Aaron","label":"Nola","x":0.073,"y":-0.343,"ff_pct":23.5,"r_rv":0.073,"r_csw":-0.25,"top":false},{"name":"Soroka, Michael","label":"Soroka","x":0.098,"y":-0.829,"ff_pct":32.0,"r_rv":0.098,"r_csw":-0.099,"top":false},{"name":"Wrobleski, Justin","label":"Wrobleski","x":0.098,"y":0.334,"ff_pct":49.6,"r_rv":0.098,"r_csw":-0.11,"top":false},{"name":"Detmers, Reid","label":"Detmers","x":0.099,"y":-1.088,"ff_pct":45.4,"r_rv":0.099,"r_csw":0.133,"top":false},{"name":"Pallante, Andre","label":"Pallante","x":0.111,"y":-0.415,"ff_pct":32.0,"r_rv":0.111,"r_csw":0.325,"top":false},{"name":"Gausman, Kevin","label":"Gausman","x":0.117,"y":-0.322,"ff_pct":51.4,"r_rv":0.117,"r_csw":0.182,"top":false},{"name":"Imanaga, Shota","label":"Imanaga","x":0.126,"y":-1.215,"ff_pct":41.3,"r_rv":0.126,"r_csw":-0.122,"top":false},{"name":"Arrighetti, Spencer","label":"Arrighetti","x":0.126,"y":0.01,"ff_pct":29.4,"r_rv":0.126,"r_csw":-0.124,"top":false},{"name":"Ray, Robbie","label":"Ray","x":0.128,"y":-0.473,"ff_pct":32.5,"r_rv":0.128,"r_csw":0.072,"top":false},{"name":"Gasser, Robert","label":"Gasser","x":0.133,"y":0.25,"ff_pct":23.8,"r_rv":0.133,"r_csw":-0.279,"top":false},{"name":"Soriano, Jos\u00e9","label":"Soriano","x":0.135,"y":0.598,"ff_pct":22.7,"r_rv":0.135,"r_csw":0.15,"top":false},{"name":"Montero, Keider","label":"Montero","x":0.149,"y":-0.847,"ff_pct":30.3,"r_rv":0.149,"r_csw":0.131,"top":false},{"name":"Leahy, Kyle","label":"Leahy","x":0.159,"y":-2.25,"ff_pct":26.3,"r_rv":0.159,"r_csw":0.032,"top":false},{"name":"Young, Brandon","label":"Young","x":0.163,"y":-0.514,"ff_pct":40.3,"r_rv":0.163,"r_csw":-0.306,"top":false},{"name":"Drohan, Shane","label":"Drohan","x":0.163,"y":-1.442,"ff_pct":28.5,"r_rv":0.163,"r_csw":-0.075,"top":false},{"name":"Mize, Casey","label":"Mize","x":0.168,"y":0.341,"ff_pct":34.4,"r_rv":0.168,"r_csw":0.173,"top":false},{"name":"Rogers, Trevor","label":"Rogers","x":0.189,"y":-0.845,"ff_pct":46.1,"r_rv":0.189,"r_csw":-0.094,"top":false},{"name":"Tolle, Payton","label":"Tolle","x":0.2,"y":0.265,"ff_pct":45.3,"r_rv":0.2,"r_csw":0.033,"top":false},{"name":"Ure\u00f1a, Walbert","label":"Ure\u00f1a","x":0.204,"y":0.152,"ff_pct":21.4,"r_rv":0.204,"r_csw":0.414,"top":false},{"name":"Lopez, Jacob","label":"Lopez","x":0.206,"y":-0.476,"ff_pct":33.9,"r_rv":0.206,"r_csw":-0.055,"top":false},{"name":"Cole, Gerrit","label":"Cole","x":0.206,"y":-0.216,"ff_pct":48.0,"r_rv":0.206,"r_csw":0.192,"top":false},{"name":"Woo, Bryan","label":"Woo","x":0.215,"y":-0.672,"ff_pct":47.5,"r_rv":0.215,"r_csw":0.372,"top":false},{"name":"Brown, Hunter","label":"Brown","x":0.223,"y":-0.677,"ff_pct":33.0,"r_rv":0.223,"r_csw":0.417,"top":false},{"name":"McLean, Nolan","label":"McLean","x":0.235,"y":-1.641,"ff_pct":20.4,"r_rv":0.235,"r_csw":0.06,"top":false},{"name":"Gallen, Zac","label":"Gallen","x":0.243,"y":-0.73,"ff_pct":36.3,"r_rv":0.243,"r_csw":0.057,"top":false},{"name":"Early, Connelly","label":"Early","x":0.252,"y":-0.455,"ff_pct":35.1,"r_rv":0.252,"r_csw":0.347,"top":false},{"name":"Lodolo, Nick","label":"Lodolo","x":0.273,"y":-0.152,"ff_pct":25.4,"r_rv":0.273,"r_csw":0.21,"top":false},{"name":"Manaea, Sean","label":"Manaea","x":0.277,"y":-0.557,"ff_pct":38.3,"r_rv":0.277,"r_csw":0.113,"top":false},{"name":"Rodriguez, Grayson","label":"Rodriguez","x":0.287,"y":-0.409,"ff_pct":54.1,"r_rv":0.287,"r_csw":-0.118,"top":false},{"name":"Bennett, Jake","label":"Bennett","x":0.339,"y":-0.302,"ff_pct":34.1,"r_rv":0.339,"r_csw":0.125,"top":false},{"name":"Luzardo, Jes\u00fas","label":"Luzardo","x":0.356,"y":-1.317,"ff_pct":25.8,"r_rv":0.356,"r_csw":-0.09,"top":false},{"name":"Henderson, Logan","label":"Henderson","x":0.364,"y":-1.461,"ff_pct":45.6,"r_rv":0.364,"r_csw":0.046,"top":false},{"name":"Kochanowicz, Jack","label":"Kochanowicz","x":0.366,"y":-0.598,"ff_pct":22.1,"r_rv":0.366,"r_csw":-0.003,"top":false},{"name":"Kelly, Merrill","label":"Kelly","x":0.368,"y":-1.131,"ff_pct":27.2,"r_rv":0.368,"r_csw":0.417,"top":false},{"name":"Feltner, Ryan","label":"Feltner","x":0.38,"y":0.931,"ff_pct":28.0,"r_rv":0.38,"r_csw":-0.214,"top":false},{"name":"Painter, Andrew","label":"Painter","x":0.381,"y":0.623,"ff_pct":32.4,"r_rv":0.381,"r_csw":0.087,"top":false},{"name":"Baz, Shane","label":"Baz","x":0.397,"y":-0.44,"ff_pct":34.5,"r_rv":0.397,"r_csw":-0.394,"top":false},{"name":"Yamamoto, Yoshinobu","label":"Yamamoto","x":0.427,"y":-0.802,"ff_pct":27.0,"r_rv":0.427,"r_csw":0.141,"top":false},{"name":"Burrows, Mike","label":"Burrows","x":0.483,"y":0.218,"ff_pct":28.5,"r_rv":0.483,"r_csw":0.108,"top":false}];
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const COL = {
+  imp:css('--imp'),faint:css('--faint'),
+  text:css('--text'),muted:css('--muted'),
+  grid:css('--grid'),axis:css('--axis'),ref:css('--ref'),
+  bg:css('--bg')
+};
+const highlighted = DATA.filter(d=>d.top);
+const bg = DATA.filter(d=>!d.top);
+
+// Reference lines: vertical at x=-0.22 (reliance threshold), horizontal at y=0
+const refLines = {
+  id:'refLines',
+  beforeDatasetsDraw(chart){
+    const {ctx,chartArea:a,scales}=chart;
+    ctx.save();
+    ctx.strokeStyle=COL.ref;ctx.lineWidth=1;ctx.setLineDash([5,4]);
+    const xRef=scales.x.getPixelForValue(-0.22);
+    ctx.beginPath();ctx.moveTo(xRef,a.top);ctx.lineTo(xRef,a.bottom);ctx.stroke();
+    const y0=scales.y.getPixelForValue(0);
+    ctx.beginPath();ctx.moveTo(a.left,y0);ctx.lineTo(a.right,y0);ctx.stroke();
+    ctx.setLineDash([]);ctx.restore();
+  }
+};
+
+// Quadrant labels drawn relative to ref lines
+const quadLabels = {
+  id:'quadLabels',
+  afterDatasetsDraw(chart){
+    const {ctx,chartArea:a,scales}=chart;
+    ctx.save();
+    ctx.font="600 11px 'Space Grotesk',sans-serif";
+    ctx.globalAlpha=0.7;ctx.fillStyle=COL.muted;
+    const p=8;
+    // top-right: reliant, IVB rising (more negative r is now right side)
+    ctx.textAlign='right';ctx.textBaseline='top';
+    ctx.fillText('reliant, IVB rising',a.right-p,a.top+p);
+    // bottom-right: reliant, IVB falling
+    ctx.textAlign='right';ctx.textBaseline='bottom';
+    ctx.fillText('reliant, IVB falling',a.right-p,a.bottom-p);
+    // top-left: not reliant, IVB rising
+    ctx.textAlign='left';ctx.textBaseline='top';
+    ctx.fillText('not reliant, IVB rising',a.left+p,a.top+p);
+    // bottom-left: not reliant, IVB falling
+    ctx.textAlign='left';ctx.textBaseline='bottom';
+    ctx.fillText('not reliant, IVB falling',a.left+p,a.bottom-p);
+    ctx.globalAlpha=1;ctx.restore();
+  }
+};
+
+// Label plugin for top-20 with collision avoidance
+const labelPlugin = {
+  id:'labels',
+  afterDatasetsDraw(chart){
+    const {ctx,chartArea:a}=chart;
+    const meta=chart.getDatasetMeta(0);
+    if(!meta||!meta.data) return;
+    ctx.font="500 10px 'Space Grotesk',sans-serif";
+    ctx.textBaseline='middle';
+    const GAP=15;
+    let sorted=highlighted.map((d,i)=>({d,i,el:meta.data[i]})).filter(o=>o.el);
+    sorted.sort((a,b)=>a.el.y-b.el.y);
+    let L=[];
+    let cs=0;
+    for(let i=0;i<=sorted.length;i++){
+      const gap=i<sorted.length&&i>0?Math.abs(sorted[i].el.y-sorted[i-1].el.y):999;
+      if(gap>20||i===sorted.length){
+        const cl=sorted.slice(cs,i);
+        cl.sort((a,b)=>a.el.x-b.el.x);
+        cl.forEach((o,ci)=>{
+          const w=ctx.measureText(o.d.label).width;
+          let right;
+          if(o.d.label==='Matthews') right=true;
+          else if(o.el.x<a.left+80) right=true;
+          else if(o.el.x>a.right-80) right=false;
+          else right=ci%2===1;
+          const lx=right?o.el.x+9:o.el.x-9-w;
+          L.push({label:o.d.label,px:o.el.x,py:o.el.y,w,right,lx,ly:o.el.y});
+        });
+        cs=i;
+      }
+    }
+    for(let pass=0;pass<8;pass++){
+      ['r','l'].forEach(side=>{
+        const grp=L.filter(o=>side==='r'?o.right:!o.right).sort((p,q)=>p.ly-q.ly);
+        for(let i=1;i<grp.length;i++){
+          const prev=grp[i-1],cur=grp[i];
+          const ox=!(cur.lx>prev.lx+prev.w+8||prev.lx>cur.lx+cur.w+8);
+          if(ox&&cur.ly<prev.ly+GAP){cur.ly=prev.ly+GAP;}
+        }
+        grp.forEach(o=>{o.ly=Math.max(a.top+7,Math.min(a.bottom-7,o.ly));});
+      });
+    }
+    L.forEach(o=>{
+      const dist=Math.sqrt((o.ly-o.py)**2+((o.right?o.lx-3:o.lx+o.w+3)-o.px)**2);
+      if(dist>14){
+        ctx.strokeStyle=COL.ref;ctx.lineWidth=0.7;
+        const ax=o.right?o.lx-3:o.lx+o.w+3;
+        ctx.beginPath();ctx.moveTo(o.px,o.py);ctx.lineTo(ax,o.ly);ctx.stroke();
+      }
+    });
+    L.forEach(o=>{
+      ctx.textAlign='left';ctx.fillStyle=COL.imp;
+      ctx.fillText(o.label,o.lx,o.ly);
+    });
+  }
+};
+
+const ctx=document.getElementById('c').getContext('2d');
+new Chart(ctx,{
+  type:'scatter',
+  data:{datasets:[
+    {label:'IVB-reliant',
+     data:highlighted.map(d=>({x:d.x,y:d.y})),
+     pointBackgroundColor:COL.imp,pointBorderColor:COL.bg,
+     pointBorderWidth:1.25,pointRadius:4.5,pointHoverRadius:6.5},
+    {label:'Other',
+     data:bg.map(d=>({x:d.x,y:d.y})),
+     pointBackgroundColor:COL.faint,pointBorderColor:COL.bg,
+     pointBorderWidth:1,pointRadius:4,pointHoverRadius:6}
+  ]},
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    layout:{padding:{top:6,right:6,bottom:2,left:2}},
+    scales:{
+      x:{min:-0.7,max:0.6,reverse:true,
+         title:{display:true,text:'IVB-to-run-value correlation (further left = more reliant on ride)',
+                color:COL.muted,font:{family:"'Space Grotesk'",size:12,weight:'600'}},
+         grid:{color:COL.grid},border:{color:COL.axis},
+         ticks:{color:COL.muted,font:{family:"'Space Mono'",size:11},
+                callback:v=>(v>0?'+':'')+v.toFixed(2),stepSize:0.1}},
+      y:{min:-4.0,max:2.0,
+         title:{display:true,text:'IVB change (last 5 starts \u2212 first 5, inches)',
+                color:COL.muted,font:{family:"'Space Grotesk'",size:12,weight:'600'}},
+         grid:{color:COL.grid},border:{color:COL.axis},
+         ticks:{color:COL.muted,font:{family:"'Space Mono'",size:11},
+                callback:v=>(v>0?'+':'')+v.toFixed(1),stepSize:1}}
+    },
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        mode:'nearest',intersect:true,
+        backgroundColor:COL.bg,borderColor:COL.axis,borderWidth:1,
+        titleColor:COL.text,bodyColor:COL.muted,
+        titleFont:{family:"'Space Grotesk'",weight:'700',size:13},
+        bodyFont:{family:"'Space Mono'",size:11},
+        padding:10,displayColors:false,
+        callbacks:{
+          title(items){
+            if(!items||!items.length) return '';
+            const ds=items[0].datasetIndex,idx=items[0].dataIndex;
+            const src=ds===0?highlighted:bg;
+            return src[idx]?src[idx].name:'';
+          },
+          label(item){
+            if(!item) return '';
+            const ds=item.datasetIndex,idx=item.dataIndex;
+            const src=ds===0?highlighted:bg;
+            const d=src[idx];
+            if(!d) return '';
+            return [
+              'FF usage: '+d.ff_pct+'%',
+              'RV correlation: '+d.r_rv.toFixed(2),
+              'CSW correlation: '+(d.r_csw>0?'+':'')+d.r_csw.toFixed(2),
+              'IVB change: '+(d.y>0?'+':'')+d.y.toFixed(2)+' in'
+            ];
+          }
+        }
+      }
+    }
+  },
+  plugins:[refLines,quadLabels,labelPlugin]
+});
+</script>
+</body>
+</html>
