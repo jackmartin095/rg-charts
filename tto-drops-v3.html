@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTO Drops: xERA by Times Through Order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#ffffff;
+  --text:#1c1b19;--muted:#8a8880;--faint:#b8b6ac;
+  --grid:#ecebe4;--axis:#8a8880;--ref:#c3c2b7;
+  --imp:#2a78d6;--imp-fill:rgba(42,120,214,.6);
+  --dec:#e0642a;--dec-fill:rgba(224,100,42,.6);
+  --dec-faint:rgba(224,100,42,.15);
+  --imp-faint:rgba(42,120,214,.15);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#16150f;
+  --text:#f2f0e6;--muted:#9c9a8f;--faint:#6b6a60;
+  --grid:#2a2822;--axis:#9c9a8f;--ref:#444;
+  --imp:#4f97ec;--imp-fill:rgba(79,151,236,.6);
+  --dec:#f0824c;--dec-fill:rgba(240,130,76,.6);
+  --dec-faint:rgba(240,130,76,.15);
+  --imp-faint:rgba(79,151,236,.15);
+}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;
+  padding:24px 20px;max-width:780px;margin:0 auto}
+.eyebrow{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;
+  letter-spacing:.14em;color:var(--muted);margin-bottom:6px}
+h1{font-size:23px;font-weight:700;line-height:1.2;margin-bottom:10px}
+.sub{font-size:14px;color:var(--muted);max-width:64ch;line-height:1.5;margin-bottom:20px}
+.chart-wrap{position:relative;width:100%;height:520px}
+.legend{display:flex;gap:24px;margin-top:14px;font-size:12px;color:var(--muted);
+  font-family:'Space Grotesk',sans-serif;align-items:center}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-swatch{width:14px;height:3px;border-radius:1px}
+.footer{margin-top:16px;font-family:'Space Mono',monospace;font-size:10px;
+  color:var(--faint);letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="eyebrow">Times Through the Order, 2026</div>
+<h1>The Cliff: Pitchers Who Collapse the Third Time Through</h1>
+<p class="sub">xERA progression from 1st to 2nd to 3rd time through the order. Drop candidates (40-85% rostered) and waiver-wire avoids (15-40% rostered) who crater the third time hitters see them. Hover to isolate a pitcher.</p>
+<div class="chart-wrap"><canvas id="chart"></canvas></div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--dec)"></div>Drop candidates (40-85% rostered)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--imp)"></div>Avoids (15-40% rostered)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:var(--ref);height:1px;border-top:2px dashed var(--ref)"></div>League median</div>
+</div>
+<div class="footer">Data: FanGraphs Splits Leaderboard, 2026 &bull; FantasyPros Roster % &bull; @jack_mariners</div>
+
+<script>
+const DATA = [{"name": "Nick Lodolo", "tm": "CIN", "group": "drop", "x1": 5.26, "x2": 5.27, "x3": 13.43, "delta": 8.17, "era": 5.08, "rost": 48, "tbf3": 79}, {"name": "Kyle Harrison", "tm": "MIL", "group": "drop", "x1": 3.12, "x2": 2.98, "x3": 8.13, "delta": 5.01, "era": 3.87, "rost": 80, "tbf3": 59}, {"name": "Shane McClanahan", "tm": "TBR", "group": "drop", "x1": 3.15, "x2": 4.6, "x3": 7.29, "delta": 4.13, "era": 3.19, "rost": 68, "tbf3": 63}, {"name": "Kyle Bradish", "tm": "BAL", "group": "drop", "x1": 3.35, "x2": 4.23, "x3": 6.7, "delta": 3.35, "era": 4.14, "rost": 76, "tbf3": 146}, {"name": "Robbie Ray", "tm": "2 Tms", "group": "drop", "x1": 4.3, "x2": 4.42, "x3": 6.53, "delta": 2.23, "era": 3.14, "rost": 79, "tbf3": 127}, {"name": "Sean Burke", "tm": "CHW", "group": "drop", "x1": 3.09, "x2": 3.74, "x3": 5.3, "delta": 2.21, "era": 3.2, "rost": 67, "tbf3": 112}, {"name": "Kyle Leahy", "tm": "STL", "group": "avoid", "x1": 3.37, "x2": 4.34, "x3": 13.25, "delta": 9.88, "era": 3.13, "rost": 36, "tbf3": 93}, {"name": "Sean Manaea", "tm": "NYM", "group": "avoid", "x1": 3.25, "x2": 5.16, "x3": 9.17, "delta": 5.92, "era": 4.91, "rost": 17, "tbf3": 97}, {"name": "Davis Martin", "tm": "CHW", "group": "avoid", "x1": 3.34, "x2": 5.6, "x3": 6.03, "delta": 2.7, "era": 4.13, "rost": 30, "tbf3": 122}, {"name": "Bryce Miller", "tm": "SEA", "group": "avoid", "x1": 2.53, "x2": 3.08, "x3": 5.19, "delta": 2.65, "era": 4.01, "rost": 33, "tbf3": 75}, {"name": "Shane Drohan", "tm": "MIL", "group": "avoid", "x1": 2.78, "x2": 4.65, "x3": 5.38, "delta": 2.6, "era": 3.75, "rost": 17, "tbf3": 75}, {"name": "Jacob Lopez", "tm": "ATH", "group": "avoid", "x1": 2.69, "x2": 3.44, "x3": 5.22, "delta": 2.53, "era": 4.71, "rost": 27, "tbf3": 84}];
+const MEDIANS = [3.74, 4.29, 4.6];
+
+const cs = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+
+const ctx = document.getElementById('chart').getContext('2d');
+const labels = ['1st TTO', '2nd TTO', '3rd TTO'];
+
+let activeIndex = -1;
+
+const datasets = [];
+
+// Median reference
+datasets.push({
+  label: 'League Median',
+  data: MEDIANS,
+  borderColor: cs('--ref'),
+  borderDash: [6, 4],
+  borderWidth: 1.5,
+  pointRadius: 0,
+  pointHoverRadius: 0,
+  tension: 0,
+  order: 100,
+  _isRef: true
+});
+
+// Pitcher lines — start faint
+DATA.forEach((p, i) => {
+  const isAvoid = p.group === 'avoid';
+  datasets.push({
+    label: p.name,
+    data: [p.x1, p.x2, p.x3],
+    borderColor: isAvoid ? cs('--imp-faint') : cs('--dec-faint'),
+    backgroundColor: isAvoid ? cs('--imp-faint') : cs('--dec-faint'),
+    borderWidth: 1.5,
+    pointRadius: 3,
+    pointHoverRadius: 5,
+    tension: 0,
+    order: 50,
+    _meta: p,
+    _fullColor: isAvoid ? cs('--imp') : cs('--dec'),
+    _faintColor: isAvoid ? cs('--imp-faint') : cs('--dec-faint'),
+    _fullBg: isAvoid ? cs('--imp-fill') : cs('--dec-fill')
+  });
+});
+
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: { labels, datasets },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: 'dataset',
+      intersect: false
+    },
+    layout: { padding: { right: 130, top: 10 } },
+    onHover: function(event, elements) {
+      const newActive = (elements.length > 0) ? elements[0].datasetIndex : -1;
+      if (newActive === activeIndex) return;
+      activeIndex = newActive;
+
+      chart.data.datasets.forEach((ds, i) => {
+        if (ds._isRef) return;
+        if (!ds._meta) return;
+        if (activeIndex === -1) {
+          // No hover — all faint
+          ds.borderColor = ds._faintColor;
+          ds.backgroundColor = ds._faintColor;
+          ds.borderWidth = 1.5;
+          ds.pointRadius = 3;
+          ds.order = 50;
+        } else if (i === activeIndex) {
+          // This is hovered
+          ds.borderColor = ds._fullColor;
+          ds.backgroundColor = ds._fullBg;
+          ds.borderWidth = 3;
+          ds.pointRadius = 5;
+          ds.order = 1;
+        } else {
+          // Not hovered — very faint
+          ds.borderColor = ds._faintColor;
+          ds.backgroundColor = ds._faintColor;
+          ds.borderWidth = 1;
+          ds.pointRadius = 2;
+          ds.order = 50;
+        }
+      });
+      chart.update('none');
+    },
+    scales: {
+      x: {
+        grid: { color: cs('--grid'), drawTicks: false },
+        border: { color: cs('--axis') },
+        ticks: {
+          font: { family: "'Space Grotesk'", size: 13, weight: 500 },
+          color: cs('--text'),
+          padding: 8
+        }
+      },
+      y: {
+        min: 2.0,
+        max: 14.0,
+        grid: { color: cs('--grid'), drawTicks: false },
+        border: { color: cs('--axis') },
+        ticks: {
+          font: { family: "'Space Mono'", size: 11 },
+          color: cs('--muted'),
+          padding: 8,
+          callback: v => v.toFixed(1)
+        },
+        title: {
+          display: true,
+          text: 'xERA',
+          font: { family: "'Space Grotesk'", size: 12, weight: 500 },
+          color: cs('--muted')
+        }
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: cs('--bg'),
+        titleColor: cs('--text'),
+        bodyColor: cs('--muted'),
+        borderColor: cs('--grid'),
+        borderWidth: 1,
+        titleFont: { family: "'Space Grotesk'", size: 13, weight: 700 },
+        bodyFont: { family: "'Space Mono'", size: 11 },
+        padding: 10,
+        displayColors: false,
+        filter: function(item) {
+          return item.dataset._meta != null;
+        },
+        callbacks: {
+          title: function(items) {
+            if (!items || !items[0]) return '';
+            const ds = items[0].dataset;
+            if (!ds._meta) return ds.label;
+            return ds._meta.name + ' (' + ds._meta.tm + ')';
+          },
+          label: function() { return ''; },
+          afterBody: function(items) {
+            if (!items || !items[0]) return '';
+            const ds = items[0].dataset;
+            if (!ds._meta) return '';
+            const m = ds._meta;
+            return [
+              '1st: ' + m.x1.toFixed(2) + '  \u2192  2nd: ' + m.x2.toFixed(2) + '  \u2192  3rd: ' + m.x3.toFixed(2),
+              'Diff: +' + m.delta.toFixed(2) + '  |  ERA: ' + (m.era || '\u2014') + '  |  Rost: ' + m.rost + '%',
+              '3rd TTO Sample: ' + m.tbf3 + ' TBF'
+            ];
+          }
+        }
+      }
+    }
+  },
+  plugins: [{
+    id: 'endLabels',
+    afterDatasetsDraw(chart) {
+      const c = chart.ctx;
+      const yScale = chart.scales.y;
+      const xScale = chart.scales.x;
+      const GAP = 13;
+
+      const lbls = [];
+      chart.data.datasets.forEach((ds, i) => {
+        if (!ds._meta) return;
+        const meta = chart.getDatasetMeta(i);
+        const last = meta.data[2];
+        if (!last) return;
+        const isActive = (activeIndex === -1 || i === activeIndex);
+        lbls.push({
+          name: ds._meta.name,
+          y: last.y,
+          origY: last.y,
+          x: last.x,
+          color: isActive ? ds._fullColor : ds._faintColor,
+          val: ds._meta.x3,
+          active: isActive
+        });
+      });
+
+      lbls.sort((a, b) => a.y - b.y);
+      for (let pass = 0; pass < 5; pass++) {
+        for (let i = 1; i < lbls.length; i++) {
+          const diff = lbls[i].y - lbls[i-1].y;
+          if (diff < GAP) {
+            const shift = (GAP - diff) / 2;
+            lbls[i-1].y -= shift;
+            lbls[i].y += shift;
+          }
+        }
+      }
+      const top = yScale.top;
+      const bottom = yScale.bottom;
+      lbls.forEach(l => { l.y = Math.max(top + 5, Math.min(bottom - 5, l.y)); });
+
+      const labelX = xScale.right + 10;
+      c.save();
+      c.textBaseline = 'middle';
+      lbls.forEach(l => {
+        c.font = l.active ? "bold 11px 'Space Mono', monospace" : "11px 'Space Mono', monospace";
+        c.globalAlpha = l.active ? 1 : (activeIndex === -1 ? 0.6 : 0.25);
+        if (Math.abs(l.y - l.origY) > 4) {
+          c.beginPath();
+          c.moveTo(l.x + 6, l.origY);
+          c.lineTo(labelX - 4, l.y);
+          c.strokeStyle = l.color;
+          c.lineWidth = 0.5;
+          c.stroke();
+        }
+        c.fillStyle = l.color;
+        c.fillText(l.name, labelX, l.y);
+      });
+      c.globalAlpha = 1;
+      c.restore();
+    }
+  }]
+});
+
+// Reset on mouse leave
+document.getElementById('chart').addEventListener('mouseleave', function() {
+  activeIndex = -1;
+  chart.data.datasets.forEach(ds => {
+    if (ds._isRef || !ds._meta) return;
+    ds.borderColor = ds._faintColor;
+    ds.backgroundColor = ds._faintColor;
+    ds.borderWidth = 1.5;
+    ds.pointRadius = 3;
+    ds.order = 50;
+  });
+  chart.update('none');
+});
+</script>
+</body>
+</html>
