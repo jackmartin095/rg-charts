@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where does command actually matter?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#fff;--ink:#14181c;--ink-soft:#5b6670;--grid:#e6e9ec;--axis:#b3bac0;
+    --tip-bg:#14181c;--tip-ink:#fff;--tip-soft:#9aa2a9;--dot:#b3bac0;--sig:#c9503c;--thresh:#8a929a;}
+  @media (prefers-color-scheme:dark){:root{--bg:#14181c;--ink:#f2f4f6;--ink-soft:#9aa2a9;
+    --grid:#262d33;--axis:#3a434b;--tip-bg:#0b0e10;--tip-ink:#f2f4f6;--tip-soft:#7a838b;
+    --dot:#4a525a;--sig:#e0654e;--thresh:#5b6670;}}
+  *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Space Grotesk",system-ui,sans-serif;font-feature-settings:"tnum" 1,"lnum" 1;}
+  .wrap{max-width:720px;margin:0 auto;padding:20px 16px 12px}
+  .eyebrow{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 6px}
+  h1{font-size:19px;font-weight:700;line-height:1.3;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{font-size:13px;line-height:1.45;color:var(--ink-soft);margin:0 0 14px;max-width:64ch}
+  .chart-box{position:relative;width:100%;height:560px}
+  @media(max-width:520px){.chart-box{height:480px}h1{font-size:17px}}
+  .legend{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin:10px 0 2px;font-size:11.5px;color:var(--ink-soft)}
+  .lg-item{display:flex;align-items:center;gap:6px}
+  .lg-dot{width:10px;height:10px;border-radius:50%}
+  .lg-line{width:16px;height:0;border-top:1.5px dashed var(--thresh)}
+  .foot{font-size:10.5px;color:var(--ink-soft);margin:12px 0 0;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+</style></head><body>
+<div class="wrap">
+  <p class="eyebrow">Command vs. results / by pitch type</p>
+  <h1>Where does command actually matter?</h1>
+  <p class="sub">Left-to-right is how much missing your spot hurts results on that pitch. Up-and-down is how confident we can be that isn't just random, and bubble size is sample size.</p>
+  <div class="chart-box"><canvas id="c"></canvas></div>
+  <p class="foot"><span>Data: OpenCommand (tomdoyo/open-command) + FanGraphs Stuff+ + Statcast xwOBA</span><span>@jack_mariners</span></p>
+</div>
+<script>
+const DATA = [{"pt":"FF","name":"Four-seam","n":156,"coef":-0.0003,"p":0.956,"neglogp":0.0195,"sig":false},{"pt":"SI","name":"Sinker","n":135,"coef":-0.0027,"p":0.604,"neglogp":0.219,"sig":false},{"pt":"SL","name":"Slider","n":110,"coef":-0.0021,"p":0.703,"neglogp":0.153,"sig":false},{"pt":"CH","name":"Changeup","n":124,"coef":0.0067,"p":0.17,"neglogp":0.7696,"sig":false},{"pt":"FC","name":"Cutter","n":92,"coef":0.0189,"p":0.011,"neglogp":1.9586,"sig":true},{"pt":"CU","name":"Curveball","n":95,"coef":-0.0055,"p":0.357,"neglogp":0.4473,"sig":false},{"pt":"FS","name":"Splitter","n":29,"coef":0.0067,"p":0.427,"neglogp":0.3696,"sig":false}];
+function cssv(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+const coefs = DATA.map(d=>d.coef);
+const xMin = Math.min(...coefs)-0.004, xMax = Math.max(...coefs)+0.004;
+const yMax = Math.max(...DATA.map(d=>d.neglogp))+0.3;
+
+const nVals = DATA.map(d=>d.n);
+const nMin = Math.min(...nVals), nMax = Math.max(...nVals);
+function radiusFor(n){
+  const t = (n-nMin)/(nMax-nMin);
+  return 8 + t*22;
+}
+
+const points = DATA.map(d=>({x:d.coef, y:d.neglogp, raw:d}));
+
+const threshLine = {
+  id:'threshLine',
+  beforeDatasetsDraw(chart){
+    const {ctx, chartArea:a, scales} = chart;
+    const thresh = -Math.log10(0.05);
+    const y = scales.y.getPixelForValue(thresh);
+    ctx.save();
+    ctx.strokeStyle = cssv('--thresh'); ctx.setLineDash([5,4]); ctx.lineWidth=1.3;
+    ctx.beginPath(); ctx.moveTo(a.left,y); ctx.lineTo(a.right,y); ctx.stroke();
+    ctx.font='600 10px "Space Grotesk"'; ctx.fillStyle=cssv('--ink-soft'); ctx.textAlign='left';
+    ctx.fillText('p = 0.05', a.left+4, y-6);
+    ctx.restore();
+  }
+};
+
+const labelPlugin = {
+  id:'labels',
+  afterDatasetsDraw(chart){
+    const {ctx, scales, chartArea:a} = chart;
+    ctx.save();
+    ctx.font='600 11px "Space Grotesk"'; ctx.textBaseline='middle';
+
+    const cands = DATA.map(d=>{
+      const px = scales.x.getPixelForValue(d.coef), py = scales.y.getPixelForValue(d.neglogp);
+      return {orig:py, y:py, x:px, r:radiusFor(d.n), d};
+    });
+    // sort by y so collision pass moves things in order
+    cands.sort((p,q)=>p.y-q.y);
+    const GAP = 15;
+    for(let pass=0; pass<10; pass++){
+      let moved=false;
+      for(let i=1;i<cands.length;i++){
+        if(cands[i].y - cands[i-1].y < GAP){
+          const mid = (cands[i].y+cands[i-1].y)/2;
+          cands[i-1].y = mid - GAP/2;
+          cands[i].y = mid + GAP/2;
+          moved=true;
+        }
+      }
+      if(!moved) break;
+    }
+    cands.forEach(c=>{ c.y = Math.max(a.top+10, Math.min(a.bottom-28, c.y)); });
+
+    cands.forEach(c=>{
+      const d = c.d;
+      const goRight = d.coef >= -0.002; // keep bottom cluster labels consistently to the right to reduce overlap
+      const lx = goRight ? c.x + c.r + 8 : c.x - c.r - 8;
+      if(Math.abs(c.y - c.orig) > 3 || Math.abs(lx-(goRight?c.x+c.r+8:c.x-c.r-8))>0){
+        ctx.strokeStyle = d.sig ? cssv('--sig') : cssv('--ink-soft');
+        ctx.globalAlpha=.4; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(c.x + (goRight? c.r : -c.r), c.orig); ctx.lineTo(lx - (goRight?2:-2), c.y); ctx.stroke();
+        ctx.globalAlpha=1;
+      }
+      ctx.fillStyle = d.sig ? cssv('--sig') : cssv('--ink');
+      ctx.textAlign = goRight ? 'left' : 'right';
+      ctx.fillText(d.name, lx, c.y);
+    });
+    ctx.restore();
+  }
+};
+
+const chart = new Chart(document.getElementById('c'), {
+  type:'bubble',
+  data:{datasets:[{
+    data: DATA.map(d=>({x:d.coef, y:d.neglogp, r:radiusFor(d.n), raw:d})),
+    backgroundColor: ctx => ctx.raw ? (ctx.raw.raw.pt==='FC' ? cssv('--sig')+'cc' : cssv('--dot')+'aa') : '#888',
+    borderColor: ctx => ctx.raw ? (ctx.raw.raw.pt==='FC' ? cssv('--sig') : cssv('--dot')) : '#888',
+    borderWidth:1.5
+  }]},
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    layout:{padding:{top:30,right:75,bottom:30,left:75}},
+    scales:{
+      x:{ min:xMin, max:xMax, title:{display:true, text:'\u2190  Command coefficient  \u2192',
+            color:cssv('--ink-soft'), font:{family:'Space Grotesk', size:11, weight:'600'}},
+          grid:{color:cssv('--grid'), drawTicks:false}, border:{color:cssv('--axis')},
+          afterBuildTicks: axis => {
+            const vals = [-0.015,-0.010,-0.005,0.000,0.005,0.010,0.015,0.020].filter(v => v>=axis.min && v<=axis.max);
+            axis.ticks = vals.map(v => ({value:v}));
+          },
+          ticks:{color:cssv('--ink-soft'), font:{family:'Space Mono', size:10}, callback: v => v.toFixed(3)} },
+      y:{ min:-0.5, max:yMax, title:{display:true, text:'Statistical Confidence',
+            color:cssv('--ink-soft'), font:{family:'Space Grotesk', size:11.5, weight:'600'}},
+          grid:{color:cssv('--grid'), drawTicks:false}, border:{color:cssv('--axis')},
+          ticks:{color:cssv('--ink-soft'), font:{family:'Space Mono', size:10}} }
+    },
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:cssv('--tip-bg'), titleColor:cssv('--tip-ink'), bodyColor:cssv('--tip-soft'),
+        borderColor:'rgba(255,255,255,.08)', borderWidth:1, padding:10, cornerRadius:7,
+        titleFont:{family:'Space Grotesk', size:12.5, weight:'700'}, bodyFont:{family:'Space Mono', size:11},
+        callbacks:{
+          title: items => items[0].raw.raw.name,
+          label: () => '',
+          afterBody: item => {
+            const d = item[0].raw.raw;
+            return [
+              'Sample size: '+d.n,
+              'Coefficient: '+d.coef.toFixed(4),
+              'P-value: '+d.p.toFixed(3)+'  |  Confidence: '+d.neglogp.toFixed(2)
+            ];
+          }
+        }
+      }
+    }
+  },
+  plugins:[threshLine, labelPlugin]
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+  ['x','y'].forEach(ax=>{ chart.options.scales[ax].grid.color=cssv('--grid'); chart.options.scales[ax].border.color=cssv('--axis');
+    chart.options.scales[ax].ticks.color=cssv('--ink-soft'); chart.options.scales[ax].title.color=cssv('--ink-soft'); });
+  chart.options.plugins.tooltip.backgroundColor=cssv('--tip-bg');
+  chart.options.plugins.tooltip.titleColor=cssv('--tip-ink');
+  chart.options.plugins.tooltip.bodyColor=cssv('--tip-soft');
+  chart.data.datasets[0].backgroundColor = ctx => ctx.raw ? (ctx.raw.raw.pt==='FC' ? cssv('--sig')+'cc' : cssv('--dot')+'aa') : '#888';
+  chart.data.datasets[0].borderColor = ctx => ctx.raw ? (ctx.raw.raw.pt==='FC' ? cssv('--sig') : cssv('--dot')) : '#888';
+  chart.update();
+});
+</script></body></html>
