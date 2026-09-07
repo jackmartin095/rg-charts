@@ -146,10 +146,11 @@ const chart = new Chart(document.getElementById('c'), {
           label: () => '',
           afterBody: item => {
             const d = item[0].raw.raw;
+            const pct = Math.round(d.p*1000)/10;
             return [
               'Sample size: '+d.n,
               'Coefficient: '+d.coef.toFixed(4),
-              'P-value: '+d.p.toFixed(3)+'  |  Confidence: '+d.neglogp.toFixed(2)
+              'P-value: '+d.p.toFixed(3)+'  (\u2248 '+pct+'% chance random)'
             ];
           }
         }
