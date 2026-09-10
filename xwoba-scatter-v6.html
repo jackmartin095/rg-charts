@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team xwOBA: vs LHP compared to vs RHP (2nd Half)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#ffffff;
+  --text:#1c1b19;--muted:#8a8880;--faint:#b8b6ac;
+  --grid:#ecebe4;--axis:#8a8880;--ref:#c3c2b7;
+  --imp:#2a78d6;--imp-fill:rgba(42,120,214,.6);
+  --dec:#e0642a;--dec-fill:rgba(224,100,42,.6);
+  --neutral:#a09e96;--neutral-fill:rgba(160,158,150,.5);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#16150f;
+  --text:#f2f0e6;--muted:#9c9a8f;--faint:#6b6a60;
+  --grid:#2a2822;--axis:#9c9a8f;--ref:#444;
+  --imp:#4f97ec;--imp-fill:rgba(79,151,236,.6);
+  --dec:#f0824c;--dec-fill:rgba(240,130,76,.6);
+  --neutral:#7a7870;--neutral-fill:rgba(122,120,112,.5);
+}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;
+  padding:24px 20px;max-width:780px;margin:0 auto}
+.eyebrow{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;
+  letter-spacing:.14em;color:var(--muted);margin-bottom:6px}
+h1{font-size:23px;font-weight:700;line-height:1.2;margin-bottom:10px}
+.sub{font-size:14px;color:var(--muted);max-width:64ch;line-height:1.5;margin-bottom:16px}
+.filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.filters button{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:500;
+  padding:6px 14px;border-radius:4px;border:1px solid var(--grid);background:var(--bg);
+  color:var(--muted);cursor:pointer;transition:all .15s}
+.filters button.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.filters button:hover:not(.active){border-color:var(--axis)}
+.chart-wrap{position:relative;width:100%;height:560px}
+.legend{display:flex;gap:20px;margin-top:14px;font-size:12px;color:var(--muted);
+  font-family:'Space Grotesk',sans-serif;align-items:center;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.footer{margin-top:16px;font-family:'Space Mono',monospace;font-size:10px;
+  color:var(--faint);letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="eyebrow">2nd Half Splits, 2026</div>
+<h1>Team xwOBA vs LHP compared to vs RHP</h1>
+<p class="sub">Post-break expected weighted on-base average by pitcher handedness for all 30 MLB teams. Teams above the diagonal hit better against right-handers, teams below hit better against lefties.</p>
+<div class="filters">
+  <button class="active" data-filter="all">All teams</button>
+  <button data-filter="lhp">Better vs LHP</button>
+  <button data-filter="rhp">Better vs RHP</button>
+  <button data-filter="gap">Biggest gap (≥15)</button>
+</div>
+<div class="chart-wrap"><canvas id="chart"></canvas></div>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--imp)"></div>Better vs LHP</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--dec)"></div>Better vs RHP</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--neutral)"></div>Near even (±15)</div>
+  <div class="legend-item" style="gap:4px"><span style="border-top:2px dashed var(--ref);width:16px;display:inline-block"></span>Even line</div>
+</div>
+<div class="footer">Data: FanGraphs Splits Leaderboard, 2nd Half 2026 &bull; @jack_mariners</div>
+
+<script>
+const DATA = [{"tm": "LAA", "lhp": 0.289, "rhp": 0.281, "gap": -0.008, "pa_l": 596, "pa_r": 1168, "group": "even"}, {"tm": "BAL", "lhp": 0.326, "rhp": 0.309, "gap": -0.018, "pa_l": 647, "pa_r": 1201, "group": "lhp"}, {"tm": "BOS", "lhp": 0.307, "rhp": 0.321, "gap": 0.014, "pa_l": 468, "pa_r": 1543, "group": "even"}, {"tm": "CHW", "lhp": 0.319, "rhp": 0.298, "gap": -0.021, "pa_l": 509, "pa_r": 1386, "group": "lhp"}, {"tm": "CLE", "lhp": 0.299, "rhp": 0.305, "gap": 0.006, "pa_l": 531, "pa_r": 1349, "group": "even"}, {"tm": "DET", "lhp": 0.292, "rhp": 0.317, "gap": 0.025, "pa_l": 634, "pa_r": 1259, "group": "rhp"}, {"tm": "KCR", "lhp": 0.282, "rhp": 0.318, "gap": 0.036, "pa_l": 578, "pa_r": 1256, "group": "rhp"}, {"tm": "MIN", "lhp": 0.296, "rhp": 0.318, "gap": 0.022, "pa_l": 598, "pa_r": 1210, "group": "rhp"}, {"tm": "NYY", "lhp": 0.32, "rhp": 0.307, "gap": -0.013, "pa_l": 589, "pa_r": 1174, "group": "even"}, {"tm": "ATH", "lhp": 0.285, "rhp": 0.314, "gap": 0.029, "pa_l": 663, "pa_r": 1209, "group": "rhp"}, {"tm": "SEA", "lhp": 0.294, "rhp": 0.309, "gap": 0.016, "pa_l": 738, "pa_r": 1063, "group": "rhp"}, {"tm": "TBR", "lhp": 0.286, "rhp": 0.305, "gap": 0.019, "pa_l": 634, "pa_r": 1263, "group": "rhp"}, {"tm": "TEX", "lhp": 0.329, "rhp": 0.278, "gap": -0.051, "pa_l": 693, "pa_r": 1133, "group": "lhp"}, {"tm": "TOR", "lhp": 0.285, "rhp": 0.299, "gap": 0.014, "pa_l": 670, "pa_r": 1215, "group": "even"}, {"tm": "ARI", "lhp": 0.309, "rhp": 0.316, "gap": 0.007, "pa_l": 578, "pa_r": 1360, "group": "even"}, {"tm": "ATL", "lhp": 0.299, "rhp": 0.308, "gap": 0.008, "pa_l": 544, "pa_r": 1280, "group": "even"}, {"tm": "CHC", "lhp": 0.314, "rhp": 0.326, "gap": 0.012, "pa_l": 473, "pa_r": 1513, "group": "even"}, {"tm": "CIN", "lhp": 0.286, "rhp": 0.313, "gap": 0.027, "pa_l": 438, "pa_r": 1412, "group": "rhp"}, {"tm": "COL", "lhp": 0.292, "rhp": 0.316, "gap": 0.024, "pa_l": 616, "pa_r": 1139, "group": "rhp"}, {"tm": "MIA", "lhp": 0.295, "rhp": 0.307, "gap": 0.011, "pa_l": 588, "pa_r": 1249, "group": "even"}, {"tm": "HOU", "lhp": 0.296, "rhp": 0.299, "gap": 0.003, "pa_l": 428, "pa_r": 1351, "group": "even"}, {"tm": "LAD", "lhp": 0.329, "rhp": 0.313, "gap": -0.017, "pa_l": 672, "pa_r": 1138, "group": "lhp"}, {"tm": "MIL", "lhp": 0.299, "rhp": 0.332, "gap": 0.033, "pa_l": 619, "pa_r": 1316, "group": "rhp"}, {"tm": "WSN", "lhp": 0.302, "rhp": 0.322, "gap": 0.02, "pa_l": 560, "pa_r": 1347, "group": "rhp"}, {"tm": "NYM", "lhp": 0.31, "rhp": 0.311, "gap": 0.001, "pa_l": 542, "pa_r": 1267, "group": "even"}, {"tm": "PHI", "lhp": 0.336, "rhp": 0.319, "gap": -0.017, "pa_l": 540, "pa_r": 1271, "group": "lhp"}, {"tm": "PIT", "lhp": 0.275, "rhp": 0.304, "gap": 0.029, "pa_l": 697, "pa_r": 1110, "group": "rhp"}, {"tm": "STL", "lhp": 0.326, "rhp": 0.309, "gap": -0.017, "pa_l": 604, "pa_r": 1365, "group": "lhp"}, {"tm": "SDP", "lhp": 0.314, "rhp": 0.346, "gap": 0.031, "pa_l": 583, "pa_r": 1275, "group": "rhp"}, {"tm": "SFG", "lhp": 0.292, "rhp": 0.318, "gap": 0.026, "pa_l": 585, "pa_r": 1292, "group": "rhp"}];
+
+const cs = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+
+let activeFilter = 'all';
+
+function getColor(group, active) {
+  if (!active) return cs('--grid');
+  if (group === 'lhp') return cs('--imp');
+  if (group === 'rhp') return cs('--dec');
+  return cs('--neutral');
+}
+
+function getFill(group, active) {
+  if (!active) return cs('--grid');
+  if (group === 'lhp') return cs('--imp-fill');
+  if (group === 'rhp') return cs('--dec-fill');
+  return cs('--neutral-fill');
+}
+
+function isActive(d) {
+  if (activeFilter === 'all') return true;
+  if (activeFilter === 'gap') return Math.abs(d.gap) >= 0.015;
+  return d.group === activeFilter;
+}
+
+const ctx = document.getElementById('chart').getContext('2d');
+
+const scatterData = DATA.map(d => ({
+  x: d.lhp,
+  y: d.rhp,
+  _meta: d
+}));
+
+const chart = new Chart(ctx, {
+  type: 'scatter',
+  data: {
+    datasets: [{
+      data: scatterData,
+      pointRadius: scatterData.map(p => isActive(p._meta) ? 6 : 4),
+      pointBackgroundColor: scatterData.map(p => getFill(p._meta.group, isActive(p._meta))),
+      pointBorderColor: scatterData.map(p => getColor(p._meta.group, isActive(p._meta))),
+      pointBorderWidth: 1.5,
+      pointHoverRadius: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 10, right: 20 } },
+    scales: {
+      x: {
+        min: 0.270,
+        max: 0.340,
+        grid: { color: cs('--grid'), drawTicks: false },
+        border: { color: cs('--axis') },
+        ticks: {
+          font: { family: "'Space Mono'", size: 11 },
+          color: cs('--muted'),
+          padding: 8,
+          callback: v => v.toFixed(3)
+        },
+        title: {
+          display: true,
+          text: 'xwOBA vs LHP',
+          font: { family: "'Space Grotesk'", size: 13, weight: 500 },
+          color: cs('--text')
+        }
+      },
+      y: {
+        min: 0.270,
+        max: 0.355,
+        grid: { color: cs('--grid'), drawTicks: false },
+        border: { color: cs('--axis') },
+        ticks: {
+          font: { family: "'Space Mono'", size: 11 },
+          color: cs('--muted'),
+          padding: 8,
+          callback: v => v.toFixed(3)
+        },
+        title: {
+          display: true,
+          text: 'xwOBA vs RHP',
+          font: { family: "'Space Grotesk'", size: 13, weight: 500 },
+          color: cs('--text')
+        }
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: cs('--bg'),
+        titleColor: cs('--text'),
+        bodyColor: cs('--muted'),
+        borderColor: cs('--grid'),
+        borderWidth: 1,
+        titleFont: { family: "'Space Grotesk'", size: 14, weight: 700 },
+        bodyFont: { family: "'Space Mono'", size: 11 },
+        padding: 10,
+        displayColors: false,
+        callbacks: {
+          title: function(items) {
+            if (!items || !items[0]) return '';
+            return items[0].raw._meta.tm;
+          },
+          label: function() { return ''; },
+          afterBody: function(items) {
+            if (!items || !items[0]) return '';
+            const m = items[0].raw._meta;
+            const sign = m.gap >= 0 ? '+' : '';
+            return [
+              'vs LHP: ' + m.lhp.toFixed(3) + '  (' + m.pa_l + ' PA)',
+              'vs RHP: ' + m.rhp.toFixed(3) + '  (' + m.pa_r + ' PA)',
+              'Gap: ' + sign + m.gap.toFixed(3)
+            ];
+          }
+        }
+      }
+    }
+  },
+  plugins: [{
+    id: 'diagonal',
+    beforeDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      const lo = Math.max(xScale.min, yScale.min);
+      const hi = Math.min(xScale.max, yScale.max);
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = cs('--ref');
+      ctx.lineWidth = 1.5;
+      ctx.moveTo(xScale.getPixelForValue(lo), yScale.getPixelForValue(lo));
+      ctx.lineTo(xScale.getPixelForValue(hi), yScale.getPixelForValue(hi));
+      ctx.stroke();
+      ctx.restore();
+    }
+  }, {
+    id: 'labels',
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      const meta = chart.getDatasetMeta(0);
+      ctx.save();
+      ctx.font = "600 11px 'Space Grotesk', sans-serif";
+      ctx.textBaseline = 'bottom';
+
+      const labels = [];
+      meta.data.forEach((pt, i) => {
+        const d = DATA[i];
+        const active = isActive(d);
+        labels.push({
+          tm: d.tm,
+          x: pt.x,
+          y: pt.y,
+          color: getColor(d.group, active),
+          active: active
+        });
+      });
+
+      labels.forEach(l => {
+        ctx.globalAlpha = l.active ? 1 : 0.3;
+        ctx.fillStyle = l.active ? cs('--text') : cs('--faint');
+        const leftTeams = ['ATH', 'STL'];
+        const belowTeams = ['BAL', 'COL'];
+        const aboveTeams = ['SFG'];
+        const belowLeftTeams = ['DET'];
+        if (leftTeams.includes(l.tm)) {
+          ctx.textAlign = 'right';
+          ctx.fillText(l.tm, l.x - 10, l.y - 2);
+          ctx.textAlign = 'left';
+        } else if (belowTeams.includes(l.tm)) {
+          ctx.fillText(l.tm, l.x + 10, l.y + 14);
+        } else if (aboveTeams.includes(l.tm)) {
+          ctx.fillText(l.tm, l.x + 10, l.y - 12);
+        } else if (belowLeftTeams.includes(l.tm)) {
+          ctx.textAlign = 'right';
+          ctx.fillText(l.tm, l.x - 10, l.y + 14);
+          ctx.textAlign = 'left';
+        } else {
+          ctx.fillText(l.tm, l.x + 10, l.y - 2);
+        }
+      });
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }]
+});
+
+// Filter buttons
+document.querySelectorAll('.filters button').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activeFilter = this.dataset.filter;
+
+    const ds = chart.data.datasets[0];
+    ds.pointRadius = scatterData.map(p => isActive(p._meta) ? 6 : 4);
+    ds.pointBackgroundColor = scatterData.map(p => getFill(p._meta.group, isActive(p._meta)));
+    ds.pointBorderColor = scatterData.map(p => getColor(p._meta.group, isActive(p._meta)));
+    chart.update('none');
+  });
+});
+</script>
+</body>
+</html>
