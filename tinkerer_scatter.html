@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stance Tinkerers: Directional vs Oscillating</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --text-secondary: #666666;
+    --grid: #e8e8e8;
+    --zero-line: #bbbbbb;
+    --eyebrow: #1a9c72;
+    --footer-text: #999999;
+    --directional: rgba(26, 156, 114, 0.65);
+    --directional-border: rgba(26, 156, 114, 0.4);
+    --oscillating: rgba(190, 190, 190, 0.45);
+    --oscillating-border: rgba(160, 160, 160, 0.3);
+    --label-text: #444444;
+    --label-line: rgba(120, 120, 120, 0.3);
+    --tab-bg: #f3f3f3;
+    --tab-active-text: #1a1a1a;
+    --tab-inactive-text: #888888;
+    --tab-border: #ddd;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --text: #e8e8e8;
+      --text-secondary: #aaaaaa;
+      --grid: #333333;
+      --zero-line: #555555;
+      --eyebrow: #30c896;
+      --footer-text: #777777;
+      --directional: rgba(48, 200, 150, 0.65);
+      --directional-border: rgba(48, 200, 150, 0.4);
+      --oscillating: rgba(120, 120, 120, 0.4);
+      --oscillating-border: rgba(100, 100, 100, 0.3);
+      --label-text: #cccccc;
+      --label-line: rgba(180, 180, 180, 0.3);
+      --tab-bg: #2a2a2a;
+      --tab-active-text: #e8e8e8;
+      --tab-inactive-text: #777777;
+      --tab-border: #444;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    padding: 24px 28px 18px;
+    max-width: 840px;
+    margin: 0 auto;
+  }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--eyebrow); margin-bottom: 6px; }
+  h1 { font-size: 24px; font-weight: 700; line-height: 1.25; margin-bottom: 10px; }
+  .explainer { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin-bottom: 16px; max-width: 620px; }
+  .tabs {
+    display: flex; gap: 0; margin-bottom: 16px;
+    border: 1px solid var(--tab-border); border-radius: 6px;
+    overflow: hidden; width: fit-content;
+  }
+  .tab {
+    padding: 7px 14px; font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 500; cursor: pointer; border: none;
+    background: var(--tab-bg); color: var(--tab-inactive-text);
+    border-right: 1px solid var(--tab-border);
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab:last-child { border-right: none; }
+  .tab.active { background: var(--bg); color: var(--tab-active-text); font-weight: 600; }
+  .chart-wrap { position: relative; width: 100%; height: 480px; margin-bottom: 12px; }
+  .legend-row {
+    display: flex; align-items: center; gap: 18px; font-size: 12px;
+    color: var(--text-secondary); font-family: 'Space Grotesk', sans-serif; margin-bottom: 6px;
+  }
+  .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .footer { font-size: 11px; color: var(--footer-text); margin-top: 10px; font-family: 'Space Mono', monospace; }
+</style>
+</head>
+<body>
+
+<div class="eyebrow">Batting Stance / Tinkering &amp; Performance</div>
+<h1>Stance tinkering vs. second-half improvement</h1>
+<p class="explainer">
+Every qualified hitter in 2026, plotted by how much their stance changed across the
+season (left to right) against their second-half xwOBA improvement (up and down).
+Green = moved one direction all season. Grey = bounced around. Filter by what they changed.
+</p>
+
+<div class="tabs">
+  <button class="tab active" data-dim="All">All</button>
+  <button class="tab" data-dim="Angle">Angle</button>
+  <button class="tab" data-dim="Feet">Feet</button>
+  <button class="tab" data-dim="Depth">Depth</button>
+  <button class="tab" data-dim="Plate">Plate</button>
+</div>
+
+<div class="chart-wrap">
+  <canvas id="chart"></canvas>
+</div>
+
+<div class="legend-row">
+  <span><span class="legend-dot" style="background:var(--directional);"></span>Directional (moved one way)</span>
+  <span><span class="legend-dot" style="background:var(--oscillating);"></span>Oscillating (bounced around)</span>
+</div>
+
+<div class="footer">Data: Baseball Savant batting stance leaderboard + Statcast via pybaseball &middot; Chart: @jack_mariners</div>
+
+<script>
+const RAW = {"Depth_dir": [{"x": 0.029, "y": -0.045, "name": "Jose Altuve", "label": "", "primary": "Depth"}, {"x": 0.692, "y": 0.0081, "name": "Ildemaro Vargas", "label": "", "primary": "Depth"}, {"x": -0.53, "y": 0.0286, "name": "Francisco Lindor", "label": "", "primary": "Depth"}, {"x": 0.529, "y": 0.07, "name": "Victor Robles", "label": "", "primary": "Depth"}, {"x": 2.056, "y": -0.0269, "name": "Jazz Chisholm Jr.", "label": "Chisholm Jr.", "primary": "Depth"}, {"x": 1.062, "y": 0.0177, "name": "Esteury Ruiz", "label": "", "primary": "Depth"}, {"x": -0.905, "y": -0.0393, "name": "Mickey Moniak", "label": "", "primary": "Depth"}, {"x": 0.292, "y": 0.0097, "name": "Randy Arozarena", "label": "", "primary": "Depth"}, {"x": -0.1, "y": -0.0027, "name": "Tristan Peters", "label": "", "primary": "Depth"}, {"x": -0.978, "y": -0.0136, "name": "Ernie Clement", "label": "", "primary": "Depth"}, {"x": 0.813, "y": 0.0719, "name": "Steven Kwan", "label": "Kwan", "primary": "Depth"}, {"x": 0.241, "y": -0.0209, "name": "Michael Massey", "label": "", "primary": "Depth"}, {"x": 0.483, "y": -0.025, "name": "Brooks Lee", "label": "", "primary": "Depth"}, {"x": 0.045, "y": -0.0453, "name": "A.J. Ewing", "label": "", "primary": "Depth"}], "Depth_osc": [], "Plate_dir": [{"x": -0.212, "y": 0.0034, "name": "Nolan Arenado", "label": "", "primary": "Plate"}, {"x": -0.072, "y": -0.0543, "name": "Yordan Alvarez", "label": "", "primary": "Plate"}], "Plate_osc": [{"x": -0.624, "y": -0.0698, "name": "Starling Marte", "label": "", "primary": "Plate"}, {"x": 0.282, "y": -0.0357, "name": "Miguel Amaya", "label": "", "primary": "Plate"}, {"x": -0.281, "y": -0.0588, "name": "Jonathan Aranda", "label": "", "primary": "Plate"}, {"x": -0.019, "y": 0.0393, "name": "Jared Triolo", "label": "", "primary": "Plate"}, {"x": 0.31, "y": -0.0776, "name": "Colson Montgomery", "label": "", "primary": "Plate"}], "Feet_dir": [{"x": -0.438, "y": -0.0304, "name": "Miguel Rojas", "label": "", "primary": "Feet"}, {"x": -0.7, "y": -0.0533, "name": "Marcus Semien", "label": "", "primary": "Feet"}, {"x": 1.29, "y": 0.027, "name": "Willson Contreras", "label": "", "primary": "Feet"}, {"x": 0.303, "y": -0.0049, "name": "Josh Bell", "label": "", "primary": "Feet"}, {"x": 0.415, "y": 0.0426, "name": "Pete Alonso", "label": "Alonso", "primary": "Feet"}, {"x": 0.016, "y": -0.0344, "name": "Edmundo Sosa", "label": "", "primary": "Feet"}, {"x": -0.441, "y": 0.0075, "name": "Jeff McNeil", "label": "", "primary": "Feet"}, {"x": -0.692, "y": 0.0094, "name": "Willi Castro", "label": "", "primary": "Feet"}, {"x": -0.223, "y": 0.0765, "name": "Andruw Monasterio", "label": "", "primary": "Feet"}, {"x": 1.789, "y": -0.0091, "name": "Derek Hill", "label": "", "primary": "Feet"}, {"x": 0.397, "y": -0.0907, "name": "Connor Wong", "label": "", "primary": "Feet"}, {"x": -0.547, "y": -0.0365, "name": "Shohei Ohtani", "label": "", "primary": "Feet"}, {"x": -0.302, "y": 0.053, "name": "Nick Fortes", "label": "", "primary": "Feet"}, {"x": -0.142, "y": 0.0371, "name": "Jake Mangum", "label": "", "primary": "Feet"}, {"x": -0.564, "y": 0.0835, "name": "Alec Bohm", "label": "", "primary": "Feet"}, {"x": -0.169, "y": -0.0247, "name": "Juan Soto", "label": "", "primary": "Feet"}, {"x": 1.128, "y": 0.0431, "name": "Jos\u00e9 Ferm\u00edn", "label": "", "primary": "Feet"}, {"x": -0.388, "y": 0.027, "name": "Jo Adell", "label": "", "primary": "Feet"}, {"x": -0.198, "y": -0.0356, "name": "Bo Bichette", "label": "", "primary": "Feet"}, {"x": 1.533, "y": 0.0389, "name": "Royce Lewis", "label": "Lewis", "primary": "Feet"}, {"x": 0.196, "y": -0.0083, "name": "Brice Turang", "label": "", "primary": "Feet"}, {"x": 0.21, "y": -0.0406, "name": "Xavier Edwards", "label": "", "primary": "Feet"}, {"x": -0.252, "y": -0.0042, "name": "Alec Burleson", "label": "", "primary": "Feet"}, {"x": -0.352, "y": 0.0036, "name": "Julio Rodr\u00edguez", "label": "", "primary": "Feet"}, {"x": -0.394, "y": -0.0785, "name": "Bobby Witt Jr.", "label": "", "primary": "Feet"}, {"x": 0.578, "y": -0.0828, "name": "Brandon Valenzuela", "label": "", "primary": "Feet"}, {"x": 0.511, "y": -0.0645, "name": "Miguel Vargas", "label": "", "primary": "Feet"}, {"x": -0.178, "y": -0.001, "name": "Ezequiel Tovar", "label": "", "primary": "Feet"}, {"x": -0.185, "y": 0.0029, "name": "Ceddanne Rafaela", "label": "", "primary": "Feet"}, {"x": 0.429, "y": 0.0252, "name": "Jarren Duran", "label": "Myers", "primary": "Feet"}, {"x": 0.467, "y": -0.0237, "name": "Henry Davis", "label": "", "primary": "Feet"}, {"x": 0.017, "y": 0.001, "name": "Colton Cowser", "label": "", "primary": "Feet"}, {"x": 0.445, "y": 0.0177, "name": "CJ Abrams", "label": "", "primary": "Feet"}, {"x": -0.243, "y": -0.0125, "name": "Owen Caissie", "label": "", "primary": "Feet"}, {"x": -0.335, "y": -0.06, "name": "Michael Busch", "label": "", "primary": "Feet"}, {"x": -0.182, "y": -0.0173, "name": "Travis Bazzana", "label": "", "primary": "Feet"}, {"x": 0.52, "y": 0.0429, "name": "Colt Keith", "label": "", "primary": "Feet"}, {"x": -0.349, "y": -0.0357, "name": "Tyler Soderstrom", "label": "", "primary": "Feet"}, {"x": 1.89, "y": -0.0148, "name": "Pete Crow-Armstrong", "label": "Crow-Armstrong", "primary": "Feet"}, {"x": -0.566, "y": -0.0321, "name": "Jac Caglianone", "label": "", "primary": "Feet"}, {"x": 0.254, "y": -0.0676, "name": "Sam Antonacci", "label": "", "primary": "Feet"}, {"x": 0.129, "y": -0.0676, "name": "Kevin McGonigle", "label": "", "primary": "Feet"}], "Feet_osc": [{"x": -0.451, "y": 0.0073, "name": "Willy Adames", "label": "", "primary": "Feet"}, {"x": -0.893, "y": -0.0534, "name": "Kyle Schwarber", "label": "", "primary": "Feet"}, {"x": -0.501, "y": -0.0037, "name": "Cal Raleigh", "label": "", "primary": "Feet"}, {"x": -0.354, "y": -0.0349, "name": "Nathan Lukes", "label": "", "primary": "Feet"}, {"x": 0.317, "y": -0.0211, "name": "Heliot Ramos", "label": "", "primary": "Feet"}, {"x": -0.698, "y": -0.0387, "name": "Brayan Rocchio", "label": "", "primary": "Feet"}, {"x": 0.935, "y": -0.0258, "name": "Logan O'Hoppe", "label": "", "primary": "Feet"}, {"x": -0.205, "y": -0.004, "name": "Heriberto Hern\u00e1ndez", "label": "", "primary": "Feet"}, {"x": 0.009, "y": 0.0261, "name": "Jasson Dom\u00ednguez", "label": "", "primary": "Feet"}, {"x": 1.397, "y": 0.0365, "name": "Hao-Yu Lee", "label": "", "primary": "Feet"}], "Angle_dir": [{"x": -0.245, "y": -0.082, "name": "Paul Goldschmidt", "label": "", "primary": "Angle"}, {"x": -0.916, "y": -0.0569, "name": "Freddie Freeman", "label": "", "primary": "Angle"}, {"x": -0.233, "y": 0.0526, "name": "Salvador Perez", "label": "", "primary": "Angle"}, {"x": -0.412, "y": 0.0079, "name": "George Springer", "label": "", "primary": "Angle"}, {"x": -0.36, "y": 0.0094, "name": "Christian V\u00e1zquez", "label": "", "primary": "Angle"}, {"x": -0.585, "y": -0.1278, "name": "Randal Grichuk", "label": "", "primary": "Angle"}, {"x": -0.628, "y": -0.0837, "name": "Mike Trout", "label": "", "primary": "Angle"}, {"x": -0.681, "y": -0.0668, "name": "Bryce Harper", "label": "", "primary": "Angle"}, {"x": -0.014, "y": 0.0013, "name": "Elias D\u00edaz", "label": "", "primary": "Angle"}, {"x": 1.188, "y": 0.0347, "name": "Eugenio Su\u00e1rez", "label": "", "primary": "Angle"}, {"x": -0.529, "y": -0.0878, "name": "Max Muncy", "label": "", "primary": "Angle"}, {"x": -0.566, "y": 0.0184, "name": "Christian Walker", "label": "", "primary": "Angle"}, {"x": 0.902, "y": 0.0343, "name": "Manny Machado", "label": "Machado", "primary": "Angle"}, {"x": -0.25, "y": -0.0092, "name": "Joc Pederson", "label": "", "primary": "Angle"}, {"x": -0.446, "y": 0.0013, "name": "J.T. Realmuto", "label": "", "primary": "Angle"}, {"x": -0.332, "y": 0.032, "name": "Christian Yelich", "label": "", "primary": "Angle"}, {"x": 0.355, "y": 0.0146, "name": "Xander Bogaerts", "label": "", "primary": "Angle"}, {"x": -0.437, "y": 0.0085, "name": "Austin Hedges", "label": "", "primary": "Angle"}, {"x": -0.66, "y": -0.0306, "name": "Gary S\u00e1nchez", "label": "", "primary": "Angle"}, {"x": -0.403, "y": -0.0212, "name": "Mookie Betts", "label": "", "primary": "Angle"}, {"x": -0.945, "y": -0.083, "name": "Victor Caratini", "label": "", "primary": "Angle"}, {"x": -0.412, "y": -0.0907, "name": "Ketel Marte", "label": "", "primary": "Angle"}, {"x": 0.018, "y": -0.0505, "name": "Brandon Nimmo", "label": "", "primary": "Angle"}, {"x": -0.413, "y": 0.0392, "name": "Trea Turner", "label": "", "primary": "Angle"}, {"x": -0.121, "y": -0.0165, "name": "Alex Bregman", "label": "", "primary": "Angle"}, {"x": -0.699, "y": -0.0361, "name": "Carson Kelly", "label": "", "primary": "Angle"}, {"x": 0.111, "y": 0.0161, "name": "Corey Seager", "label": "", "primary": "Angle"}, {"x": -0.337, "y": 0.0509, "name": "Luis Torrens", "label": "", "primary": "Angle"}, {"x": -0.522, "y": 0.0245, "name": "Dansby Swanson", "label": "", "primary": "Angle"}, {"x": 0.204, "y": -0.0151, "name": "Taylor Ward", "label": "", "primary": "Angle"}, {"x": -0.729, "y": -0.0771, "name": "Michael Conforto", "label": "", "primary": "Angle"}, {"x": -0.224, "y": 0.019, "name": "Jake Bauers", "label": "", "primary": "Angle"}, {"x": -0.686, "y": -0.0832, "name": "Cody Bellinger", "label": "", "primary": "Angle"}, {"x": 0.148, "y": -0.035, "name": "J.P. Crawford", "label": "", "primary": "Angle"}, {"x": -0.429, "y": 0.0794, "name": "Tyler O'Neill", "label": "", "primary": "Angle"}, {"x": -0.223, "y": -0.088, "name": "Dominic Smith", "label": "", "primary": "Angle"}, {"x": -0.431, "y": -0.0369, "name": "Weston Wilson", "label": "", "primary": "Angle"}, {"x": -0.01, "y": -0.0731, "name": "Andrew Benintendi", "label": "", "primary": "Angle"}, {"x": -0.138, "y": 0.0315, "name": "Rafael Devers", "label": "", "primary": "Angle"}, {"x": -0.497, "y": -0.006, "name": "Josh Naylor", "label": "", "primary": "Angle"}, {"x": -0.191, "y": -0.006, "name": "Luis Arraez", "label": "", "primary": "Angle"}, {"x": -0.199, "y": -0.0277, "name": "Gleyber Torres", "label": "", "primary": "Angle"}, {"x": -0.656, "y": -0.0611, "name": "Yandy D\u00edaz", "label": "", "primary": "Angle"}, {"x": -0.269, "y": 0.0404, "name": "Luis Rengifo", "label": "", "primary": "Angle"}, {"x": -0.02, "y": 0.0635, "name": "Rhys Hoskins", "label": "", "primary": "Angle"}, {"x": -0.455, "y": 0.0663, "name": "Zach McKinstry", "label": "", "primary": "Angle"}, {"x": 0.664, "y": -0.0371, "name": "Cedric Mullins", "label": "", "primary": "Angle"}, {"x": -0.523, "y": 0.0121, "name": "Lane Thomas", "label": "", "primary": "Angle"}, {"x": 0.858, "y": -0.0138, "name": "Ronald Acu\u00f1a Jr.", "label": "", "primary": "Angle"}, {"x": 0.657, "y": 0.0079, "name": "Keibert Ruiz", "label": "", "primary": "Angle"}, {"x": -0.836, "y": -0.033, "name": "Daulton Varsho", "label": "", "primary": "Angle"}, {"x": -0.467, "y": 0.0038, "name": "Nico Hoerner", "label": "", "primary": "Angle"}, {"x": -0.401, "y": 0.0037, "name": "Trevor Larnach", "label": "", "primary": "Angle"}, {"x": -0.384, "y": 0.0216, "name": "Kyle Tucker", "label": "", "primary": "Angle"}, {"x": -0.502, "y": -0.049, "name": "Trent Grisham", "label": "", "primary": "Angle"}, {"x": -0.54, "y": 0.0494, "name": "Tyler Stephenson", "label": "", "primary": "Angle"}, {"x": -0.362, "y": -0.0347, "name": "Nathaniel Lowe", "label": "", "primary": "Angle"}, {"x": 0.049, "y": -0.0506, "name": "Ian Happ", "label": "", "primary": "Angle"}, {"x": 0.146, "y": 0.004, "name": "Ty France", "label": "", "primary": "Angle"}, {"x": -0.565, "y": -0.0572, "name": "Brandon Lowe", "label": "", "primary": "Angle"}, {"x": -0.748, "y": -0.0196, "name": "Myles Straw", "label": "", "primary": "Angle"}, {"x": 1.97, "y": 0.0253, "name": "Jake McCarthy", "label": "", "primary": "Angle"}, {"x": -0.274, "y": -0.0634, "name": "Kody Clemens", "label": "", "primary": "Angle"}, {"x": 1.645, "y": 0.0207, "name": "Fernando Tatis Jr.", "label": "Tatis Jr.", "primary": "Angle"}, {"x": -0.698, "y": -0.0078, "name": "Leody Taveras", "label": "", "primary": "Angle"}, {"x": 1.798, "y": 0.0039, "name": "Andr\u00e9s Gim\u00e9nez", "label": "", "primary": "Angle"}, {"x": 0.358, "y": -0.0412, "name": "Carlos Narv\u00e1ez", "label": "", "primary": "Angle"}, {"x": -0.369, "y": -0.1171, "name": "Carlos Cortes", "label": "", "primary": "Angle"}, {"x": 1.031, "y": 0.0424, "name": "Josh Lowe", "label": "", "primary": "Angle"}, {"x": 0.124, "y": 0.011, "name": "David Hamilton", "label": "", "primary": "Angle"}, {"x": 0.12, "y": 0.0183, "name": "Taylor Trammell", "label": "", "primary": "Angle"}, {"x": 0.661, "y": -0.0378, "name": "Edouard Julien", "label": "", "primary": "Angle"}, {"x": 0.817, "y": -0.0419, "name": "JJ Bleday", "label": "", "primary": "Angle"}, {"x": -0.785, "y": -0.0469, "name": "Ryan Vilade", "label": "", "primary": "Angle"}, {"x": 0.014, "y": -0.0684, "name": "Bryan Reynolds", "label": "", "primary": "Angle"}, {"x": -0.793, "y": 0.0159, "name": "Austin Martin", "label": "", "primary": "Angle"}, {"x": -0.222, "y": -0.0518, "name": "Adley Rutschman", "label": "", "primary": "Angle"}, {"x": 0.021, "y": -0.0975, "name": "Ryan Kreidler", "label": "", "primary": "Angle"}, {"x": 1.314, "y": 0.0293, "name": "Garrett Mitchell", "label": "", "primary": "Angle"}, {"x": -0.379, "y": -0.036, "name": "Brandon Marsh", "label": "", "primary": "Angle"}, {"x": 0.062, "y": -0.0035, "name": "Kyle Stowers", "label": "", "primary": "Angle"}, {"x": 0.494, "y": 0.0448, "name": "Austin Wells", "label": "", "primary": "Angle"}, {"x": -0.354, "y": -0.043, "name": "Jake Burger", "label": "", "primary": "Angle"}, {"x": -0.043, "y": -0.0477, "name": "Josh Smith", "label": "", "primary": "Angle"}, {"x": -0.719, "y": 0.0274, "name": "Isaac Paredes", "label": "", "primary": "Angle"}, {"x": -0.205, "y": -0.034, "name": "Taylor Walls", "label": "", "primary": "Angle"}, {"x": 1.039, "y": -0.0708, "name": "Iv\u00e1n Herrera", "label": "", "primary": "Angle"}, {"x": 0.276, "y": -0.0054, "name": "Luis Garc\u00eda Jr.", "label": "", "primary": "Angle"}, {"x": -0.063, "y": -0.0314, "name": "Tyler Freeman", "label": "", "primary": "Angle"}, {"x": 0.639, "y": 0.0004, "name": "Lawrence Butler", "label": "", "primary": "Angle"}, {"x": -0.46, "y": -0.0807, "name": "Michael Harris II", "label": "", "primary": "Angle"}, {"x": 1.019, "y": 0.0352, "name": "Patrick Bailey", "label": "Bailey", "primary": "Angle"}, {"x": -0.467, "y": -0.0069, "name": "Gabriel Moreno", "label": "", "primary": "Angle"}, {"x": -0.663, "y": -0.0564, "name": "Otto Lopez", "label": "", "primary": "Angle"}, {"x": 0.575, "y": -0.0258, "name": "Geraldo Perdomo", "label": "", "primary": "Angle"}, {"x": -0.261, "y": -0.1295, "name": "Oswald Peraza", "label": "", "primary": "Angle"}, {"x": 0.289, "y": -0.0762, "name": "Kazuma Okamoto", "label": "", "primary": "Angle"}, {"x": -0.313, "y": 0.0613, "name": "Yainer Diaz", "label": "", "primary": "Angle"}, {"x": -0.752, "y": 0.03, "name": "Seiya Suzuki", "label": "", "primary": "Angle"}, {"x": 1.219, "y": 0.0381, "name": "Hunter Feduccia", "label": "", "primary": "Angle"}, {"x": -0.471, "y": 0.0123, "name": "Jos\u00e9 Caballero", "label": "", "primary": "Angle"}, {"x": -0.985, "y": -0.0063, "name": "Jared Young", "label": "", "primary": "Angle"}, {"x": 0.067, "y": 0.0319, "name": "Jos\u00e9 Tena", "label": "", "primary": "Angle"}, {"x": -0.222, "y": 0.0026, "name": "Ezequiel Duran", "label": "", "primary": "Angle"}, {"x": -0.469, "y": 0.0667, "name": "Wilyer Abreu", "label": "", "primary": "Angle"}, {"x": -0.62, "y": -0.0256, "name": "Jorbit Vivas", "label": "", "primary": "Angle"}, {"x": -0.489, "y": -0.0151, "name": "Spencer Torkelson", "label": "", "primary": "Angle"}, {"x": 0.344, "y": -0.0312, "name": "Matt McLain", "label": "", "primary": "Angle"}, {"x": 0.969, "y": 0.029, "name": "Richie Palacios", "label": "", "primary": "Angle"}, {"x": -0.044, "y": 0.0338, "name": "Bryson Stott", "label": "", "primary": "Angle"}, {"x": 0.367, "y": -0.0064, "name": "TJ Rumfield", "label": "", "primary": "Angle"}, {"x": 0.024, "y": -0.0257, "name": "Andy Pages", "label": "", "primary": "Angle"}, {"x": -0.264, "y": -0.0093, "name": "Angel Mart\u00ednez", "label": "", "primary": "Angle"}, {"x": 0.812, "y": -0.0054, "name": "Elly De La Cruz", "label": "", "primary": "Angle"}, {"x": 0.75, "y": -0.0374, "name": "Corbin Carroll", "label": "", "primary": "Angle"}, {"x": -0.496, "y": 0.0465, "name": "Gunnar Henderson", "label": "", "primary": "Angle"}, {"x": -0.859, "y": 0.0021, "name": "Nasim Nu\u00f1ez", "label": "", "primary": "Angle"}, {"x": 1.033, "y": 0.0161, "name": "Brett Baty", "label": "", "primary": "Angle"}, {"x": 0.464, "y": -0.063, "name": "Dominic Canzone", "label": "", "primary": "Angle"}, {"x": -0.378, "y": -0.0305, "name": "Isaac Collins", "label": "", "primary": "Angle"}, {"x": -0.351, "y": -0.0076, "name": "Dylan Crews", "label": "", "primary": "Angle"}, {"x": -0.226, "y": 0.0012, "name": "Drake Baldwin", "label": "", "primary": "Angle"}, {"x": -0.282, "y": -0.0567, "name": "Vaughn Grissom", "label": "", "primary": "Angle"}, {"x": -0.51, "y": 0.0839, "name": "Drew Gilbert", "label": "", "primary": "Angle"}, {"x": -0.423, "y": 0.005, "name": "Dylan Beavers", "label": "", "primary": "Angle"}, {"x": 1.42, "y": -0.0377, "name": "Troy Johnston", "label": "", "primary": "Angle"}, {"x": -0.846, "y": 0.0166, "name": "Liam Hicks", "label": "", "primary": "Angle"}, {"x": 0.496, "y": -0.011, "name": "Masyn Winn", "label": "", "primary": "Angle"}, {"x": 0.034, "y": 0.0246, "name": "Javier Sanoja", "label": "", "primary": "Angle"}, {"x": 1.331, "y": 0.0102, "name": "Kyle Karros", "label": "", "primary": "Angle"}, {"x": -0.259, "y": 0.0569, "name": "Coby Mayo", "label": "", "primary": "Angle"}, {"x": -0.148, "y": -0.0048, "name": "Nick Gonzales", "label": "", "primary": "Angle"}, {"x": -0.208, "y": -0.0863, "name": "Dillon Dingler", "label": "", "primary": "Angle"}, {"x": -0.787, "y": -0.0184, "name": "Jackson Chourio", "label": "", "primary": "Angle"}, {"x": 0.27, "y": 0.0452, "name": "Nolan Schanuel", "label": "", "primary": "Angle"}, {"x": -0.314, "y": 0.0069, "name": "Evan Carter", "label": "", "primary": "Angle"}, {"x": 0.377, "y": 0.0097, "name": "Wyatt Langford", "label": "", "primary": "Angle"}, {"x": -0.536, "y": 0.0161, "name": "James Wood", "label": "", "primary": "Angle"}, {"x": 1.191, "y": -0.0342, "name": "Carter Jensen", "label": "", "primary": "Angle"}, {"x": -0.599, "y": 0.0129, "name": "Daylen Lile", "label": "", "primary": "Angle"}, {"x": -0.508, "y": -0.0354, "name": "Alejandro Osuna", "label": "", "primary": "Angle"}, {"x": 0.296, "y": 0.0025, "name": "Hunter Goodman", "label": "", "primary": "Angle"}, {"x": 0.33, "y": 0.0939, "name": "Jacob Young", "label": "", "primary": "Angle"}, {"x": -0.207, "y": -0.0371, "name": "Sal Stewart", "label": "", "primary": "Angle"}, {"x": 0.634, "y": 0.0898, "name": "Jackson Merrill", "label": "", "primary": "Angle"}, {"x": 0.666, "y": -0.0189, "name": "Nathan Church", "label": "", "primary": "Angle"}, {"x": 0.369, "y": 0.0083, "name": "Carson Benge", "label": "", "primary": "Angle"}, {"x": 0.535, "y": 0.0212, "name": "Justin Crawford", "label": "", "primary": "Angle"}, {"x": 0.148, "y": -0.046, "name": "Cole Young", "label": "", "primary": "Angle"}, {"x": 0.352, "y": 0.0321, "name": "Caleb Durbin", "label": "", "primary": "Angle"}, {"x": 0.511, "y": 0.0047, "name": "Henry Bolte", "label": "", "primary": "Angle"}, {"x": -0.375, "y": 0.0204, "name": "Chase DeLauter", "label": "", "primary": "Angle"}, {"x": 0.127, "y": 0.0215, "name": "Chandler Simpson", "label": "", "primary": "Angle"}, {"x": 1.743, "y": 0.0375, "name": "Chase Meidroth", "label": "Meidroth", "primary": "Angle"}, {"x": -0.217, "y": 0.0166, "name": "Jacob Wilson", "label": "", "primary": "Angle"}, {"x": -0.073, "y": -0.0437, "name": "Bryce Eldridge", "label": "", "primary": "Angle"}, {"x": 0.338, "y": 0.0605, "name": "Luke Keaschall", "label": "", "primary": "Angle"}, {"x": -0.818, "y": 0.0267, "name": "Masataka Yoshida", "label": "", "primary": "Angle"}, {"x": 0.745, "y": -0.0463, "name": "Ben Williamson", "label": "", "primary": "Angle"}], "Angle_osc": [{"x": -0.867, "y": 0.0915, "name": "Mike Yastrzemski", "label": "", "primary": "Angle"}, {"x": -0.094, "y": -0.0482, "name": "Teoscar Hern\u00e1ndez", "label": "", "primary": "Angle"}, {"x": -0.292, "y": -0.0209, "name": "Jos\u00e9 Ram\u00edrez", "label": "", "primary": "Angle"}, {"x": -0.154, "y": -0.0001, "name": "Matt Olson", "label": "", "primary": "Angle"}, {"x": -0.016, "y": 0.0073, "name": "Jonah Heim", "label": "", "primary": "Angle"}, {"x": -0.369, "y": 0.0075, "name": "Ryan McMahon", "label": "", "primary": "Angle"}, {"x": -0.778, "y": -0.0982, "name": "Amed Rosario", "label": "", "primary": "Angle"}, {"x": -0.057, "y": -0.0446, "name": "Mauricio Dub\u00f3n", "label": "", "primary": "Angle"}, {"x": -0.847, "y": -0.0406, "name": "Ozzie Albies", "label": "", "primary": "Angle"}, {"x": -0.731, "y": -0.0517, "name": "Gavin Sheets", "label": "", "primary": "Angle"}, {"x": 0.116, "y": -0.0574, "name": "William Contreras", "label": "", "primary": "Angle"}, {"x": -0.602, "y": 0.0332, "name": "Austin Riley", "label": "", "primary": "Angle"}, {"x": -0.163, "y": 0.0565, "name": "Brett Sullivan", "label": "", "primary": "Angle"}, {"x": -0.859, "y": -0.0298, "name": "Jeremy Pe\u00f1a", "label": "", "primary": "Angle"}, {"x": -0.359, "y": -0.0451, "name": "Vladimir Guerrero Jr.", "label": "", "primary": "Angle"}, {"x": 1.293, "y": -0.1018, "name": "Dane Myers", "label": "", "primary": "Angle"}, {"x": 0.686, "y": -0.0445, "name": "TJ Friedl", "label": "", "primary": "Angle"}, {"x": -0.348, "y": -0.0136, "name": "Jonny DeLuca", "label": "", "primary": "Angle"}, {"x": 0.479, "y": -0.0111, "name": "Leo Jim\u00e9nez", "label": "", "primary": "Angle"}, {"x": 0.082, "y": -0.0487, "name": "Nick Loftin", "label": "", "primary": "Angle"}, {"x": -0.338, "y": -0.0282, "name": "Francisco Alvarez", "label": "", "primary": "Angle"}, {"x": -0.596, "y": -0.0039, "name": "Riley Greene", "label": "", "primary": "Angle"}, {"x": 0.2, "y": -0.0546, "name": "Zach Neto", "label": "", "primary": "Angle"}, {"x": -0.192, "y": 0.03, "name": "Joey Ortiz", "label": "", "primary": "Angle"}, {"x": 0.359, "y": -0.0177, "name": "Jordan Walker", "label": "", "primary": "Angle"}, {"x": -0.106, "y": -0.0219, "name": "Junior Caminero", "label": "", "primary": "Angle"}, {"x": -0.446, "y": 0.0076, "name": "Ben Rice", "label": "", "primary": "Angle"}, {"x": -0.735, "y": -0.0394, "name": "Kyle Manzardo", "label": "", "primary": "Angle"}, {"x": 1.009, "y": -0.0499, "name": "Cam Smith", "label": "", "primary": "Angle"}, {"x": 0.255, "y": 0.002, "name": "JJ Wetherholt", "label": "", "primary": "Angle"}, {"x": 0.583, "y": 0.0358, "name": "Jakob Marsee", "label": "", "primary": "Angle"}, {"x": 0.13, "y": -0.0364, "name": "Munetaka Murakami", "label": "", "primary": "Angle"}, {"x": -0.454, "y": -0.0269, "name": "Jung Hoo Lee", "label": "", "primary": "Angle"}]};
+const DIMS = ['Depth', 'Plate', 'Feet', 'Angle'];
+
+function cv(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// Build 8 datasets: 4 dims x dir/osc
+// Order: Depth_dir, Depth_osc, Plate_dir, Plate_osc, Feet_dir, Feet_osc, Angle_dir, Angle_osc
+const dsConfigs = [];
+DIMS.forEach(dim => {
+  ['dir', 'osc'].forEach(dtype => {
+    const key = dim + '_' + dtype;
+    const pts = (RAW[key] || []).map(p => ({ x: p.x, y: p.y, name: p.name, label: p.label, primary: p.primary }));
+    const isDir = dtype === 'dir';
+    const hasLabeled = pts.some(p => p.label);
+    dsConfigs.push({
+      dim: dim,
+      dtype: dtype,
+      label: dim + ' (' + (isDir ? 'directional' : 'oscillating') + ')',
+      data: pts,
+      pointRadius: pts.map(p => p.label ? 7 : 3),
+      pointHoverRadius: pts.map(p => p.label ? 9 : 5),
+      pointBackgroundColor: isDir ? cv('--directional') : cv('--oscillating'),
+      pointBorderColor: pts.map(p => p.label
+        ? (isDir ? cv('--directional-border') : cv('--oscillating-border'))
+        : 'transparent'),
+      pointBorderWidth: pts.map(p => p.label ? 1.5 : 0),
+      order: isDir ? 1 : 2
+    });
+  });
+});
+
+// Label plugin
+const labelPlugin = {
+  id: 'playerLabels',
+  afterDraw(chart) {
+    const ctx = chart.ctx;
+    const xScale = chart.scales.x;
+    const yScale = chart.scales.y;
+    const area = chart.chartArea;
+    const labelFont = "500 11px 'Space Grotesk', sans-serif";
+    const lineColor = cv('--label-line');
+    const textColor = cv('--label-text');
+
+    const labels = [];
+    chart.data.datasets.forEach((ds, di) => {
+      if (ds.hidden) return;
+      ds.data.forEach(pt => {
+        if (pt.label) {
+          labels.push({
+            text: pt.label,
+            dotPx: xScale.getPixelForValue(pt.x),
+            dotPy: yScale.getPixelForValue(pt.y),
+            labelPy: yScale.getPixelForValue(pt.y),
+          });
+        }
+      });
+    });
+
+    labels.sort((a, b) => a.labelPy - b.labelPy);
+    const MIN_GAP = 13;
+    for (let pass = 0; pass < 30; pass++) {
+      let moved = false;
+      for (let i = 0; i < labels.length - 1; i++) {
+        const diff = labels[i + 1].labelPy - labels[i].labelPy;
+        if (Math.abs(diff) < MIN_GAP) {
+          const nudge = (MIN_GAP - Math.abs(diff)) / 2;
+          labels[i].labelPy -= nudge;
+          labels[i + 1].labelPy += nudge;
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    labels.forEach(lb => {
+      lb.labelPy = Math.max(area.top + 6, Math.min(area.bottom - 6, lb.labelPy));
+    });
+
+    ctx.save();
+    ctx.font = labelFont;
+    labels.forEach(lb => {
+      const labelX = lb.dotPx + 8;
+      const maxLabelX = area.right - 70;
+      let anchorX, textAlign;
+      if (labelX > maxLabelX) {
+        anchorX = lb.dotPx - 8;
+        textAlign = 'right';
+      } else {
+        anchorX = labelX;
+        textAlign = 'left';
+      }
+      ctx.beginPath();
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 0.7;
+      ctx.moveTo(lb.dotPx + (textAlign === 'left' ? 4 : -4), lb.dotPy);
+      ctx.lineTo(anchorX + (textAlign === 'left' ? -2 : 2), lb.labelPy);
+      ctx.stroke();
+      ctx.fillStyle = textColor;
+      ctx.textAlign = textAlign;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(lb.text, anchorX, lb.labelPy);
+    });
+    ctx.restore();
+  }
+};
+
+const ctx = document.getElementById('chart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'scatter',
+  data: { datasets: dsConfigs },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'nearest', intersect: true },
+    animation: { duration: 250 },
+    layout: { padding: { left: 10, right: 80, top: 10, bottom: 10 } },
+    scales: {
+      x: {
+        type: 'linear', min: -1.2, max: 2.3,
+        title: {
+          display: true, text: 'Tinkering amount (composite stance variance)',
+          font: { family: "'Space Grotesk', sans-serif", size: 12, weight: '500' },
+          color: cv('--text-secondary')
+        },
+        grid: { color: cv('--grid'), lineWidth: 0.8 },
+        ticks: { font: { family: "'Space Mono', monospace", size: 11 }, color: cv('--text-secondary') }
+      },
+      y: {
+        type: 'linear', min: -0.145, max: 0.1,
+        title: {
+          display: true, text: 'H2 \u2212 H1 xwOBA',
+          font: { family: "'Space Grotesk', sans-serif", size: 12, weight: '500' },
+          color: cv('--text-secondary')
+        },
+        grid: {
+          color: function(context) { return context.tick.value === 0 ? cv('--zero-line') : cv('--grid'); },
+          lineWidth: function(context) { return context.tick.value === 0 ? 1.5 : 0.8; }
+        },
+        ticks: {
+          font: { family: "'Space Mono', monospace", size: 11 },
+          color: cv('--text-secondary'),
+          callback: function(val) { return (val >= 0 ? '+' : '') + val.toFixed(3); }
+        }
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        callbacks: {
+          title: function(items) { if (!items.length) return ''; return items[0].raw.name || ''; },
+          label: function(context) {
+            const d = context.raw;
+            return [
+              'Primary: ' + d.primary,
+              'Tinker score: ' + d.x.toFixed(2),
+              'H2-H1 xwOBA: ' + (d.y >= 0 ? '+' : '') + d.y.toFixed(3)
+            ];
+          }
+        },
+        titleFont: { family: "'Space Grotesk', sans-serif", weight: '600', size: 13 },
+        bodyFont: { family: "'Space Mono', monospace", size: 11 },
+        backgroundColor: 'rgba(30,30,30,0.92)',
+        titleColor: '#ffffff', bodyColor: '#dddddd',
+        padding: 10, cornerRadius: 4, displayColors: false
+      }
+    }
+  },
+  plugins: [labelPlugin]
+});
+
+// Tab filtering
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const dim = this.dataset.dim;
+    chart.data.datasets.forEach((ds, i) => {
+      if (dim === 'All') {
+        ds.hidden = false;
+      } else {
+        ds.hidden = ds.dim !== dim;
+      }
+    });
+    chart.update();
+  });
+});
+
+// Dark mode
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  chart.data.datasets.forEach(ds => {
+    const isDir = ds.dtype === 'dir';
+    ds.pointBackgroundColor = isDir ? cv('--directional') : cv('--oscillating');
+    ds.pointBorderColor = ds.data.map(p => p.label
+      ? (isDir ? cv('--directional-border') : cv('--oscillating-border'))
+      : 'transparent');
+  });
+  ['x', 'y'].forEach(a => {
+    chart.options.scales[a].title.color = cv('--text-secondary');
+    chart.options.scales[a].ticks.color = cv('--text-secondary');
+  });
+  chart.update('none');
+});
+</script>
+</body>
+</html>
