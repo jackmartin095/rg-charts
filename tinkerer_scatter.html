@@ -158,16 +158,24 @@ const labelPlugin = {
     const lineColor = cv('--label-line');
     const textColor = cv('--label-text');
 
+    // Manual position overrides: side ('left'/'right') and vertical nudge
+    const OVERRIDES = {
+      'Meidroth': { side: 'right', nudgeY: 0 },
+    };
+    const SKIP_LABELS = ['Lewis', 'Bailey'];
+
     const labels = [];
     chart.data.datasets.forEach((ds, di) => {
       if (ds.hidden) return;
       ds.data.forEach(pt => {
-        if (pt.label) {
+        if (pt.label && !SKIP_LABELS.includes(pt.label)) {
+          const ovr = OVERRIDES[pt.label] || {};
           labels.push({
             text: pt.label,
             dotPx: xScale.getPixelForValue(pt.x),
             dotPy: yScale.getPixelForValue(pt.y),
-            labelPy: yScale.getPixelForValue(pt.y),
+            labelPy: yScale.getPixelForValue(pt.y) + (ovr.nudgeY || 0),
+            forceSide: ovr.side || null,
           });
         }
       });
@@ -178,11 +186,14 @@ const labelPlugin = {
     for (let pass = 0; pass < 30; pass++) {
       let moved = false;
       for (let i = 0; i < labels.length - 1; i++) {
-        const diff = labels[i + 1].labelPy - labels[i].labelPy;
+        const a = labels[i], b = labels[i + 1];
+        // Skip nudging if labels are on opposite forced sides
+        if (a.forceSide && b.forceSide && a.forceSide !== b.forceSide) continue;
+        const diff = b.labelPy - a.labelPy;
         if (Math.abs(diff) < MIN_GAP) {
           const nudge = (MIN_GAP - Math.abs(diff)) / 2;
-          labels[i].labelPy -= nudge;
-          labels[i + 1].labelPy += nudge;
+          a.labelPy -= nudge;
+          b.labelPy += nudge;
           moved = true;
         }
       }
@@ -195,22 +206,27 @@ const labelPlugin = {
     ctx.save();
     ctx.font = labelFont;
     labels.forEach(lb => {
-      const labelX = lb.dotPx + 8;
       const maxLabelX = area.right - 70;
       let anchorX, textAlign;
-      if (labelX > maxLabelX) {
+      if (lb.forceSide === 'left') {
         anchorX = lb.dotPx - 8;
         textAlign = 'right';
-      } else {
-        anchorX = labelX;
+      } else if (lb.forceSide === 'right') {
+        anchorX = lb.dotPx + 8;
         textAlign = 'left';
+      } else if (lb.forceSide === 'above') {
+        anchorX = lb.dotPx;
+        textAlign = 'center';
+      } else {
+        const labelX = lb.dotPx + 8;
+        if (labelX > maxLabelX) {
+          anchorX = lb.dotPx - 8;
+          textAlign = 'right';
+        } else {
+          anchorX = labelX;
+          textAlign = 'left';
+        }
       }
-      ctx.beginPath();
-      ctx.strokeStyle = lineColor;
-      ctx.lineWidth = 0.7;
-      ctx.moveTo(lb.dotPx + (textAlign === 'left' ? 4 : -4), lb.dotPy);
-      ctx.lineTo(anchorX + (textAlign === 'left' ? -2 : 2), lb.labelPy);
-      ctx.stroke();
       ctx.fillStyle = textColor;
       ctx.textAlign = textAlign;
       ctx.textBaseline = 'middle';
@@ -262,23 +278,30 @@ const chart = new Chart(ctx, {
     plugins: {
       legend: { display: false },
       tooltip: {
-        enabled: true,
-        callbacks: {
-          title: function(items) { if (!items.length) return ''; return items[0].raw.name || ''; },
-          label: function(context) {
-            const d = context.raw;
-            return [
-              'Primary: ' + d.primary,
-              'Tinker score: ' + d.x.toFixed(2),
-              'H2-H1 xwOBA: ' + (d.y >= 0 ? '+' : '') + d.y.toFixed(3)
-            ];
+        enabled: false,
+        external: function(context) {
+          let el = document.getElementById('tooltip');
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'tooltip';
+            el.style.cssText = 'position:absolute;pointer-events:none;background:#1e1e1e;color:#ddd;font-family:Space Mono,monospace;font-size:11px;padding:10px;border-radius:4px;z-index:10;opacity:1;transition:opacity 0.1s;white-space:nowrap;';
+            document.body.appendChild(el);
           }
-        },
-        titleFont: { family: "'Space Grotesk', sans-serif", weight: '600', size: 13 },
-        bodyFont: { family: "'Space Mono', monospace", size: 11 },
-        backgroundColor: 'rgba(30,30,30,0.92)',
-        titleColor: '#ffffff', bodyColor: '#dddddd',
-        padding: 10, cornerRadius: 4, displayColors: false
+          const tooltip = context.tooltip;
+          if (tooltip.opacity === 0) {
+            el.style.opacity = '0';
+            return;
+          }
+          const d = tooltip.dataPoints[0].raw;
+          el.innerHTML = '<div style="font-family:Space Grotesk,sans-serif;font-weight:600;font-size:13px;color:#fff;margin-bottom:4px;">' + d.name + '</div>'
+            + 'Primary: ' + d.primary + '<br>'
+            + 'Tinker score: ' + d.x.toFixed(2) + '<br>'
+            + 'H2-H1 xwOBA: ' + (d.y >= 0 ? '+' : '') + d.y.toFixed(3);
+          el.style.opacity = '1';
+          const pos = context.chart.canvas.getBoundingClientRect();
+          el.style.left = pos.left + window.scrollX + tooltip.caretX + 12 + 'px';
+          el.style.top = pos.top + window.scrollY + tooltip.caretY - 20 + 'px';
+        }
       }
     }
   },
