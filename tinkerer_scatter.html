@@ -61,7 +61,7 @@
   h1 { font-size: 24px; font-weight: 700; line-height: 1.25; margin-bottom: 10px; }
   .explainer { font-size: 14px; line-height: 1.55; color: var(--text-secondary); margin-bottom: 16px; max-width: 620px; }
   .tabs {
-    display: flex; gap: 0; margin-bottom: 16px;
+    display: flex; gap: 0;
     border: 1px solid var(--tab-border); border-radius: 6px;
     overflow: hidden; width: fit-content;
   }
@@ -93,12 +93,19 @@ season (left to right) against their second-half xwOBA improvement (up and down)
 Green = moved one direction all season. Grey = bounced around. Filter by what they changed.
 </p>
 
-<div class="tabs">
-  <button class="tab active" data-dim="All">All</button>
-  <button class="tab" data-dim="Angle">Angle</button>
-  <button class="tab" data-dim="Feet">Feet</button>
-  <button class="tab" data-dim="Depth">Depth</button>
-  <button class="tab" data-dim="Plate">Plate</button>
+<div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
+  <div class="tabs" id="dimTabs">
+    <button class="tab active" data-dim="All">All</button>
+    <button class="tab" data-dim="Angle">Angle</button>
+    <button class="tab" data-dim="Feet">Feet</button>
+    <button class="tab" data-dim="Depth">Depth</button>
+    <button class="tab" data-dim="Plate">Plate</button>
+  </div>
+  <div class="tabs" id="dirTabs">
+    <button class="tab active" data-dir="All">All</button>
+    <button class="tab" data-dir="dir">Directional</button>
+    <button class="tab" data-dir="osc">Oscillating</button>
+  </div>
 </div>
 
 <div class="chart-wrap">
@@ -308,20 +315,34 @@ const chart = new Chart(ctx, {
   plugins: [labelPlugin]
 });
 
-// Tab filtering
-document.querySelectorAll('.tab').forEach(btn => {
+// Tab filtering - dual filters
+let activeDim = 'All';
+let activeDir = 'All';
+
+function applyFilters() {
+  chart.data.datasets.forEach(ds => {
+    const dimMatch = activeDim === 'All' || ds.dim === activeDim;
+    const dirMatch = activeDir === 'All' || ds.dtype === activeDir;
+    ds.hidden = !(dimMatch && dirMatch);
+  });
+  chart.update();
+}
+
+document.querySelectorAll('#dimTabs .tab').forEach(btn => {
   btn.addEventListener('click', function() {
-    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('#dimTabs .tab').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
-    const dim = this.dataset.dim;
-    chart.data.datasets.forEach((ds, i) => {
-      if (dim === 'All') {
-        ds.hidden = false;
-      } else {
-        ds.hidden = ds.dim !== dim;
-      }
-    });
-    chart.update();
+    activeDim = this.dataset.dim;
+    applyFilters();
+  });
+});
+
+document.querySelectorAll('#dirTabs .tab').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#dirTabs .tab').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activeDir = this.dataset.dir;
+    applyFilters();
   });
 });
 
