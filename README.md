@@ -35,43 +35,37 @@ Layering bat speed against squared-up contact rate and chase rate for hitters un
 Comparing Stuff+ and Location+ across 2026 starters to show stuff correlates more strongly with run prevention than command does.
 - `rg_stuff_location_gap_v2.html`
 
-## [Fill in: piece title]
+## Tracking Four-Seam Velocity
 - `velo_chart.html` (four-seam velocity risers/fallers)
 
-## [Fill in: piece title]
+## Stance Shifters
 - `tinkerer_scatter.html` (batting stance tinkerers)
 
-## [Fill in: piece title]
+## Times Through the Order Piece
 - `tto-drops-v3.html`
 - `tto-pickups-v2.html`
 (times through the order)
 
-## [Fill in: piece title]
+## IVB Reliers
 - `ivb-reliance-scatter-v6.html` (fastball IVB)
 
-## [Fill in: piece title]
+## Home/Away Splits
 - `rg_homeaway_scatter_v1.html`
 - `rg_diverging_homeaway_v1.html`
 (home/away splits)
 
-## [Fill in: piece title]
+## Power Sweeper
 - `rg_power_sweeper_v1.html`
 - `rg_power_sweeper_thr_v1.html`
 
-## [Fill in: piece title]
+## OOPSY Projections vs xwOBA
 - `oopsy_woba_chart.html`
 - `oopsy_woba_chart_3.html`
 - `rg_woba_xwoba_v1.html`
 - `xwoba-scatter-v6.html`
 
-## [Fill in: piece title]
+## Handedness Splits
 - `team_wrc_lhp_vs_rhp_y72_2026.html`
-
-## [Fill in: piece title]
-- `pitcher_era_chart.html`
-
-## [Fill in: piece title]
-- `pitch_overview.html`
 
 ## Tools / utilities
 - `rg_schedule_tracker.html`
