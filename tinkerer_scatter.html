@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stance Tinkerers: Directional vs Oscillating</title>
+<title>Stance Tinkerers: Tinkering vs Performance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -90,7 +90,7 @@
 <p class="explainer">
 Every qualified hitter in 2026, plotted by how much their stance changed across the
 season (left to right) against their second-half xwOBA improvement (up and down).
-Green = moved one direction all season. Grey = bounced around. Filter by what they changed.
+Filter by what they changed.
 </p>
 
 <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
@@ -101,21 +101,13 @@ Green = moved one direction all season. Grey = bounced around. Filter by what th
     <button class="tab" data-dim="Depth">Depth</button>
     <button class="tab" data-dim="Plate">Plate</button>
   </div>
-  <div class="tabs" id="dirTabs">
-    <button class="tab active" data-dir="All">All</button>
-    <button class="tab" data-dir="dir">Directional</button>
-    <button class="tab" data-dir="osc">Oscillating</button>
-  </div>
 </div>
 
 <div class="chart-wrap">
   <canvas id="chart"></canvas>
 </div>
 
-<div class="legend-row">
-  <span><span class="legend-dot" style="background:var(--directional);"></span>Directional (moved one way)</span>
-  <span><span class="legend-dot" style="background:var(--oscillating);"></span>Oscillating (bounced around)</span>
-</div>
+
 
 <div class="footer">Data: Baseball Savant batting stance leaderboard + Statcast via pybaseball &middot; Chart: @jack_mariners</div>
 
@@ -317,13 +309,11 @@ const chart = new Chart(ctx, {
 
 // Tab filtering - dual filters
 let activeDim = 'All';
-let activeDir = 'All';
 
 function applyFilters() {
   chart.data.datasets.forEach(ds => {
     const dimMatch = activeDim === 'All' || ds.dim === activeDim;
-    const dirMatch = activeDir === 'All' || ds.dtype === activeDir;
-    ds.hidden = !(dimMatch && dirMatch);
+    ds.hidden = !dimMatch;
   });
   chart.update();
 }
@@ -333,15 +323,6 @@ document.querySelectorAll('#dimTabs .tab').forEach(btn => {
     document.querySelectorAll('#dimTabs .tab').forEach(b => b.classList.remove('active'));
     this.classList.add('active');
     activeDim = this.dataset.dim;
-    applyFilters();
-  });
-});
-
-document.querySelectorAll('#dirTabs .tab').forEach(btn => {
-  btn.addEventListener('click', function() {
-    document.querySelectorAll('#dirTabs .tab').forEach(b => b.classList.remove('active'));
-    this.classList.add('active');
-    activeDir = this.dataset.dir;
     applyFilters();
   });
 });
