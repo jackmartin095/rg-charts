@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rookie Pitcher Composite vs xERA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --text-secondary: #666666;
+    --grid: #e8e8e8;
+    --eyebrow: #d95f02;
+    --footer-text: #999999;
+    --dot-bg: rgba(190,190,190,0.3);
+    --accent: #1a9c72;
+    --accent-fill: rgba(26,156,114,0.7);
+    --tooltip-bg: #1e1e1e;
+    --tooltip-text: #f0f0f0;
+    --tooltip-text-secondary: #999999;
+    --zero-line: #b8b8b8;
+    --positive: #2fae72;
+    --negative: #e0554a;
+    --bar-track: rgba(255,255,255,0.12);
+    --tooltip-divider: rgba(255,255,255,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a1a1a;
+      --text: #e8e8e8;
+      --text-secondary: #aaaaaa;
+      --grid: #333333;
+      --eyebrow: #f0a050;
+      --footer-text: #777777;
+      --dot-bg: rgba(120,120,120,0.25);
+      --accent: #2ec98e;
+      --accent-fill: rgba(46,201,142,0.7);
+      --tooltip-bg: #1e1e1e;
+      --tooltip-text: #f0f0f0;
+      --tooltip-text-secondary: #999999;
+      --zero-line: #4a4a4a;
+      --positive: #3fc383;
+      --negative: #ef6b5f;
+      --bar-track: rgba(255,255,255,0.12);
+      --tooltip-divider: rgba(255,255,255,0.12);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1a1a;
+    --text: #e8e8e8;
+    --text-secondary: #aaaaaa;
+    --grid: #333333;
+    --eyebrow: #f0a050;
+    --footer-text: #777777;
+    --dot-bg: rgba(120,120,120,0.25);
+    --accent: #2ec98e;
+    --accent-fill: rgba(46,201,142,0.7);
+    --tooltip-bg: #1e1e1e;
+    --tooltip-text: #f0f0f0;
+    --tooltip-text-secondary: #999999;
+    --zero-line: #4a4a4a;
+    --positive: #3fc383;
+    --negative: #ef6b5f;
+    --bar-track: rgba(255,255,255,0.12);
+    --tooltip-divider: rgba(255,255,255,0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto;
+    max-width: 840px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    padding: 24px 28px 18px;
+  }
+  .eyebrow {
+    display: block;
+    text-transform: uppercase;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: var(--eyebrow);
+    margin: 0 0 8px;
+  }
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 10px;
+    line-height: 1.25;
+  }
+  .explainer {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    margin: 0 0 18px;
+    max-width: 620px;
+  }
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 500px;
+  }
+  .legend-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 10px;
+  }
+  .legend-dot {
+    display: inline-block;
+    border-radius: 50%;
+    background: var(--accent-fill);
+    border: 1.5px solid var(--accent);
+  }
+  footer {
+    margin-top: 18px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--footer-text);
+    border-top: 1px solid var(--grid);
+    padding-top: 10px;
+  }
+  #chartTooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-text);
+    padding: 12px 14px;
+    border-radius: 8px;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    z-index: 10;
+    width: 260px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  }
+  #chartTooltip .tt-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #chartTooltip .tt-title span {
+    font-weight: 400;
+    color: var(--tooltip-text-secondary);
+  }
+  #chartTooltip .tt-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--tooltip-divider);
+  }
+  #chartTooltip .tt-stat {
+    text-align: left;
+  }
+  #chartTooltip .tt-stat-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--tooltip-text-secondary);
+    margin-bottom: 2px;
+  }
+  #chartTooltip .tt-stat-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  #chartTooltip .tt-section-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--tooltip-text-secondary);
+    margin: 9px 0 6px;
+  }
+  #chartTooltip .tt-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+  }
+  #chartTooltip .tt-row-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 500;
+    width: 62px;
+    flex-shrink: 0;
+    color: var(--tooltip-text);
+  }
+  #chartTooltip .tt-row-raw {
+    width: 40px;
+    flex-shrink: 0;
+    color: var(--tooltip-text-secondary);
+    text-align: right;
+  }
+  #chartTooltip .tt-bar-track {
+    flex: 1;
+    height: 5px;
+    background: var(--bar-track);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+  #chartTooltip .tt-bar-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 3px;
+  }
+  #chartTooltip .tt-row-z {
+    width: 40px;
+    flex-shrink: 0;
+    text-align: right;
+    font-weight: 700;
+  }
+  #chartTooltip .tt-footnote {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--tooltip-text-secondary);
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid var(--tooltip-divider);
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <span class="eyebrow">Rookie Pitchers &middot; Full Season</span>
+  <h1>Composite Score vs. xERA</h1>
+  <p class="explainer">Each point is a qualified rookie starter. X-axis is the weighted composite z-score (K-BB% 25%, Stuff+ 25%, CSW% 20%, Z-Contact% 20%, Hard% 15%), all relative to this rookie class only. GB% removed, Hard% weight raised. Y-axis is xERA, reversed so better performance (lower xERA) sits higher. Bubble size scales with innings pitched.</p>
+  <div class="chart-container">
+    <canvas id="rookieChart"></canvas>
+    <div id="chartTooltip"></div>
+  </div>
+  <div class="legend-row">
+    <span class="legend-dot" style="width:8px;height:8px;"></span> smaller bubble = fewer IP
+    <span class="legend-dot" style="width:20px;height:20px;margin-left:14px;"></span> larger bubble = more IP
+  </div>
+  <footer>Data: FanGraphs &middot; @jack_mariners</footer>
+
+<script>
+const DATA = [{"name": "Payton Tolle", "team": "BOS", "composite": 1.703, "xera": 2.65, "ip": 143.0, "kbb": 22.3, "stuff": 114.7, "csw": 27.5, "zcontact": 82.3, "hard": 30.1, "gb": 36.6, "z_kbb": 2.01, "z_stuff": 2.25, "z_csw": 0.57, "z_zcontact": 1.6, "z_hard": 1.36, "z_gb": -0.77}, {"name": "Logan Henderson", "team": "MIL", "composite": 1.438, "xera": 2.75, "ip": 93.1, "kbb": 26.1, "stuff": 102.4, "csw": 27.9, "zcontact": 81.1, "hard": 34.7, "gb": 30.6, "z_kbb": 2.89, "z_stuff": 0.46, "z_csw": 0.96, "z_zcontact": 2.05, "z_hard": -0.01, "z_gb": -1.75}, {"name": "Nolan McLean", "team": "NYM", "composite": 0.928, "xera": 3.7, "ip": 172.2, "kbb": 16.6, "stuff": 107.1, "csw": 28.4, "zcontact": 86.6, "hard": 30.3, "gb": 45.1, "z_kbb": 0.71, "z_stuff": 1.14, "z_csw": 1.39, "z_zcontact": -0.03, "z_hard": 1.29, "z_gb": 0.63}, {"name": "Trey Yesavage", "team": "TOR", "composite": 0.744, "xera": 3.38, "ip": 93.2, "kbb": 11.7, "stuff": 107.9, "csw": 28.0, "zcontact": 84.1, "hard": 31.2, "gb": 33.9, "z_kbb": -0.44, "z_stuff": 1.26, "z_csw": 0.99, "z_zcontact": 0.93, "z_hard": 1.03, "z_gb": -1.22}, {"name": "Parker Messick", "team": "CLE", "composite": 0.603, "xera": 3.1, "ip": 178.1, "kbb": 19.5, "stuff": 97.3, "csw": 27.0, "zcontact": 84.2, "hard": 31.9, "gb": 44.3, "z_kbb": 1.38, "z_stuff": -0.28, "z_csw": 0.12, "z_zcontact": 0.9, "z_hard": 0.83, "z_gb": 0.49}, {"name": "Walbert Ure\u00f1a", "team": "LAA", "composite": 0.572, "xera": 3.23, "ip": 142.2, "kbb": 12.5, "stuff": 100.2, "csw": 27.9, "zcontact": 83.5, "hard": 30.8, "gb": 54.6, "z_kbb": -0.24, "z_stuff": 0.14, "z_csw": 0.98, "z_zcontact": 1.15, "z_hard": 1.14, "z_gb": 2.18}, {"name": "Connelly Early", "team": "WSN", "composite": 0.321, "xera": 4.36, "ip": 91.2, "kbb": 15.1, "stuff": 102.8, "csw": 27.3, "zcontact": 86.9, "hard": 33.9, "gb": 42.6, "z_kbb": 0.36, "z_stuff": 0.52, "z_csw": 0.45, "z_zcontact": -0.12, "z_hard": 0.23, "z_gb": 0.21}, {"name": "Shane Drohan", "team": "MIL", "composite": 0.282, "xera": 4.26, "ip": 91.1, "kbb": 14.5, "stuff": 98.8, "csw": 27.9, "zcontact": 83.1, "hard": 39.3, "gb": 38.3, "z_kbb": 0.21, "z_stuff": -0.07, "z_csw": 0.95, "z_zcontact": 1.32, "z_hard": -1.38, "z_gb": -0.5}, {"name": "Gage Jump", "team": "ATH", "composite": 0.2, "xera": 4.62, "ip": 98.2, "kbb": 14.2, "stuff": 106.6, "csw": 27.5, "zcontact": 87.1, "hard": 38.7, "gb": 38.4, "z_kbb": 0.14, "z_stuff": 1.06, "z_csw": 0.59, "z_zcontact": -0.19, "z_hard": -1.2, "z_gb": -0.47}, {"name": "Connor Prielipp", "team": "MIN", "composite": 0.127, "xera": 4.09, "ip": 111.1, "kbb": 15.5, "stuff": 102.8, "csw": 26.8, "zcontact": 88.1, "hard": 34.5, "gb": 41.7, "z_kbb": 0.46, "z_stuff": 0.51, "z_csw": -0.03, "z_zcontact": -0.58, "z_hard": 0.04, "z_gb": 0.07}, {"name": "Foster Griffin", "team": "CLE", "composite": 0.097, "xera": 4.33, "ip": 166.2, "kbb": 15.3, "stuff": 97.5, "csw": 27.1, "zcontact": 87.5, "hard": 32.9, "gb": 44.8, "z_kbb": 0.4, "z_stuff": -0.26, "z_csw": 0.27, "z_zcontact": -0.36, "z_hard": 0.53, "z_gb": 0.57}, {"name": "Brandon Sproat", "team": "MIL", "composite": 0.023, "xera": 4.83, "ip": 88.1, "kbb": 13.4, "stuff": 100.5, "csw": 26.6, "zcontact": 85.2, "hard": 36.1, "gb": 43.5, "z_kbb": -0.05, "z_stuff": 0.18, "z_csw": -0.24, "z_zcontact": 0.52, "z_hard": -0.44, "z_gb": 0.35}, {"name": "Andrew Alvarez", "team": "WSN", "composite": -0.033, "xera": 3.93, "ip": 81.1, "kbb": 12.1, "stuff": 94.1, "csw": 28.2, "zcontact": 90.7, "hard": 27.7, "gb": 50.5, "z_kbb": -0.34, "z_stuff": -0.74, "z_csw": 1.22, "z_zcontact": -1.57, "z_hard": 2.05, "z_gb": 1.5}, {"name": "Andrew Painter", "team": "PHI", "composite": -0.037, "xera": 4.61, "ip": 110.2, "kbb": 11.8, "stuff": 103.7, "csw": 26.1, "zcontact": 85.5, "hard": 35.6, "gb": 41.0, "z_kbb": -0.42, "z_stuff": 0.65, "z_csw": -0.66, "z_zcontact": 0.39, "z_hard": -0.27, "z_gb": -0.05}, {"name": "Robert Gasser", "team": "MIL", "composite": -0.111, "xera": 4.43, "ip": 98.0, "kbb": 13.4, "stuff": 105.6, "csw": 25.5, "zcontact": 87.5, "hard": 35.3, "gb": 33.6, "z_kbb": -0.05, "z_stuff": 0.92, "z_csw": -1.13, "z_zcontact": -0.37, "z_hard": -0.19, "z_gb": -1.27}, {"name": "Ryan Johnson", "team": "LAA", "composite": -0.198, "xera": 4.74, "ip": 90.0, "kbb": 9.6, "stuff": 94.6, "csw": 27.5, "zcontact": 85.5, "hard": 34.6, "gb": 34.1, "z_kbb": -0.91, "z_stuff": -0.67, "z_csw": 0.58, "z_zcontact": 0.39, "z_hard": 0.02, "z_gb": -1.18}, {"name": "Trevor McDonald", "team": "SFG", "composite": -0.363, "xera": 4.1, "ip": 70.1, "kbb": 11.0, "stuff": 99.2, "csw": 27.6, "zcontact": 90.4, "hard": 35.9, "gb": 55.3, "z_kbb": -0.6, "z_stuff": -0.01, "z_csw": 0.67, "z_zcontact": -1.44, "z_hard": -0.38, "z_gb": 2.3}, {"name": "Jake Bennett", "team": "BOS", "composite": -0.421, "xera": 3.42, "ip": 109.2, "kbb": 15.9, "stuff": 92.6, "csw": 25.4, "zcontact": 87.1, "hard": 35.1, "gb": 41.8, "z_kbb": 0.53, "z_stuff": -0.96, "z_csw": -1.3, "z_zcontact": -0.18, "z_hard": -0.12, "z_gb": 0.08}, {"name": "Bubba Chandler", "team": "PIT", "composite": -0.513, "xera": 4.3, "ip": 146.0, "kbb": 8.9, "stuff": 100.9, "csw": 25.3, "zcontact": 86.5, "hard": 35.6, "gb": 39.5, "z_kbb": -1.07, "z_stuff": 0.25, "z_csw": -1.35, "z_zcontact": 0.03, "z_hard": -0.29, "z_gb": -0.3}, {"name": "Noah Schultz", "team": "CHW", "composite": -0.532, "xera": 6.11, "ip": 60.1, "kbb": 8.8, "stuff": 97.6, "csw": 26.6, "zcontact": 87.9, "hard": 35.8, "gb": 33.7, "z_kbb": -1.1, "z_stuff": -0.24, "z_csw": -0.23, "z_zcontact": -0.51, "z_hard": -0.33, "z_gb": -1.24}, {"name": "Tatsuya Imai", "team": "HOU", "composite": -0.605, "xera": 5.07, "ip": 58.2, "kbb": 12.1, "stuff": 86.5, "csw": 28.0, "zcontact": 84.6, "hard": 43.6, "gb": 43.5, "z_kbb": -0.35, "z_stuff": -1.86, "z_csw": 0.98, "z_zcontact": 0.75, "z_hard": -2.66, "z_gb": 0.37}, {"name": "Zac Thornton", "team": "NYM", "composite": -0.738, "xera": 4.64, "ip": 79.1, "kbb": 13.2, "stuff": 98.6, "csw": 24.2, "zcontact": 89.0, "hard": 36.0, "gb": 37.7, "z_kbb": -0.08, "z_stuff": -0.09, "z_csw": -2.28, "z_zcontact": -0.9, "z_hard": -0.4, "z_gb": -0.59}, {"name": "Luinder Avila", "team": "KCR", "composite": -0.917, "xera": 5.27, "ip": 51.2, "kbb": 5.2, "stuff": 98.1, "csw": 26.0, "zcontact": 88.0, "hard": 37.5, "gb": 46.7, "z_kbb": -1.94, "z_stuff": -0.17, "z_csw": -0.75, "z_zcontact": -0.56, "z_hard": -0.85, "z_gb": 0.88}, {"name": "Gabriel Hughes", "team": "COL", "composite": -1.07, "xera": 3.9, "ip": 61.0, "kbb": 11.8, "stuff": 84.0, "csw": 24.9, "zcontact": 89.4, "hard": 31.4, "gb": 40.3, "z_kbb": -0.42, "z_stuff": -2.21, "z_csw": -1.73, "z_zcontact": -1.05, "z_hard": 0.96, "z_gb": -0.16}, {"name": "Rhett Lowder", "team": "CIN", "composite": -1.511, "xera": 5.55, "ip": 120.1, "kbb": 8.9, "stuff": 86.8, "csw": 25.7, "zcontact": 92.3, "hard": 38.0, "gb": 40.5, "z_kbb": -1.08, "z_stuff": -1.81, "z_csw": -1.04, "z_zcontact": -2.16, "z_hard": -0.99, "z_gb": -0.14}];
+
+const minIP = Math.min(...DATA.map(d => d.ip));
+const maxIP = Math.max(...DATA.map(d => d.ip));
+const minR = 3;
+const maxR = 13;
+function radiusFor(ip) {
+  const t = (Math.sqrt(ip) - Math.sqrt(minIP)) / (Math.sqrt(maxIP) - Math.sqrt(minIP));
+  return minR + t * (maxR - minR);
+}
+
+const points = DATA.map(d => ({
+  x: d.composite,
+  y: d.xera,
+  r: radiusFor(d.ip),
+  raw: d
+}));
+
+const ctx = document.getElementById('rookieChart').getContext('2d');
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+const tooltipEl = document.getElementById('chartTooltip');
+
+// component rows: [label shown, weight shown, raw value formatted, z-score]
+const COMPONENTS = [
+  { key: 'z_kbb',      label: 'K-BB%',      weight: '25%', raw: d => d.kbb + '%' },
+  { key: 'z_stuff',    label: 'Stuff+',     weight: '25%', raw: d => d.stuff },
+  { key: 'z_csw',      label: 'CSW%',       weight: '20%', raw: d => d.csw + '%' },
+  { key: 'z_zcontact', label: 'Z-Contact%', weight: '20%', raw: d => d.zcontact + '%' },
+  { key: 'z_hard',     label: 'Hard%',      weight: '15%', raw: d => d.hard + '%' },
+];
+const Z_BAR_MAX = 2.2; // z-scores beyond this just fill the bar
+
+function externalTooltip(context) {
+  const { chart, tooltip } = context;
+  if (tooltip.opacity === 0) {
+    tooltipEl.style.opacity = 0;
+    return;
+  }
+  if (tooltip.dataPoints && tooltip.dataPoints.length) {
+    const raw = tooltip.dataPoints[0].raw.raw;
+
+    const rowsHtml = COMPONENTS.map(c => {
+      const z = raw[c.key];
+      const positive = z >= 0;
+      const pct = Math.min(Math.abs(z) / Z_BAR_MAX, 1) * 100;
+      const color = positive ? 'var(--positive)' : 'var(--negative)';
+      const sign = positive ? '+' : '';
+      return `<div class="tt-row">` +
+        `<span class="tt-row-label">${c.label}</span>` +
+        `<span class="tt-row-raw">${c.raw(raw)}</span>` +
+        `<span class="tt-bar-track">` +
+          `<span class="tt-bar-fill" style="width:${pct}%;left:${positive ? '50%' : (50-pct)+'%'};background:${color};"></span>` +
+        `</span>` +
+        `<span class="tt-row-z" style="color:${color};">${sign}${z.toFixed(2)}</span>` +
+      `</div>`;
+    }).join('');
+
+    const weightLine = COMPONENTS.map(c => `${c.label} ${c.weight}`).join(' &middot; ');
+
+    tooltipEl.innerHTML =
+      `<div class="tt-title">${raw.name} <span>(${raw.team})</span></div>` +
+      `<div class="tt-stats">` +
+        `<div class="tt-stat"><div class="tt-stat-label">Composite</div><div class="tt-stat-value" style="color:${raw.composite >= 0 ? 'var(--positive)' : 'var(--negative)'}">${raw.composite >= 0 ? '+' : ''}${raw.composite.toFixed(3)}</div></div>` +
+        `<div class="tt-stat"><div class="tt-stat-label">xERA</div><div class="tt-stat-value">${raw.xera.toFixed(2)}</div></div>` +
+        `<div class="tt-stat"><div class="tt-stat-label">IP</div><div class="tt-stat-value">${raw.ip}</div></div>` +
+      `</div>` +
+      `<div class="tt-section-label">Component Z-Scores</div>` +
+      rowsHtml +
+      `<div class="tt-footnote">${weightLine}</div>`;
+  }
+  const { offsetLeft: posX, offsetTop: posY } = chart.canvas;
+  tooltipEl.style.opacity = 1;
+  let left = posX + tooltip.caretX + 14;
+  const maxLeft = chart.canvas.offsetWidth - 275;
+  if (left > maxLeft) left = posX + tooltip.caretX - 274;
+  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.top = (posY + tooltip.caretY - 90) + 'px';
+}
+
+// label collision avoidance: cluster points by proximity. Loose points get labeled
+// normally. Dense clusters (3+) just label every other point instead of drawing
+// leader lines everywhere, cleaner when a lot of guys sit close together.
+const labelPlugin = {
+  id: 'pointLabels',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const meta = chart.getDatasetMeta(0);
+    const entries = points.map((p, i) => {
+      const el = meta.data[i];
+      return { px: el.x, py: el.y, r: el.options.radius, name: p.raw.name };
+    });
+    entries.sort((a, b) => a.py - b.py);
+
+    const clusterGap = 16;   // threshold to decide what counts as "clustered"
+    const labelGap = 24;     // minimum spacing enforced between any two drawn labels
+
+    // group into clusters based on original (undisplaced) proximity
+    const clusters = [];
+    let current = [entries[0]];
+    for (let i = 1; i < entries.length; i++) {
+      if (entries[i].py - entries[i-1].py < clusterGap) {
+        current.push(entries[i]);
+      } else {
+        clusters.push(current);
+        current = [entries[i]];
+      }
+    }
+    clusters.push(current);
+
+    const toDraw = [];
+    clusters.forEach(cluster => {
+      if (cluster.length <= 2) {
+        // small group: declutter with forward pass, both get labeled
+        for (let i = 1; i < cluster.length; i++) {
+          if (cluster[i].py - cluster[i-1].py < labelGap) {
+            cluster[i].py = cluster[i-1].py + labelGap;
+          }
+        }
+        cluster.forEach(e => toDraw.push(e));
+      } else {
+        // dense cluster: skip more aggressively the more crowded it is, and space
+        // the survivors out well beyond the raw cluster span if needed so the
+        // middle of the chart doesn't turn into a wall of text
+        let skip = 2;
+        if (cluster.length > 8) skip = 4;
+        else if (cluster.length > 4) skip = 3;
+        const labeled = cluster.filter((_, i) => i % skip === 0);
+        const centerPy = (cluster[0].py + cluster[cluster.length - 1].py) / 2;
+        const span = labelGap * (labeled.length - 1);
+        labeled.forEach((e, i) => {
+          e.py = labeled.length > 1
+            ? centerPy - span / 2 + span * i / (labeled.length - 1)
+            : centerPy;
+          toDraw.push(e);
+        });
+      }
+    });
+
+    // manual overrides: hide specific labels, force a side, or force-include a
+    // label that got skipped by the cluster decluttering
+    const OVERRIDES = {
+      'Trevor McDonald': { hide: true },
+      'Andrew Alvarez': { hide: true },
+      'Ryan Johnson': { hide: true },
+      'Parker Messick': { forceSide: 'left' },
+      'Walbert Ureña': { forceShow: true, forceSide: 'right' },
+      'Gage Jump': { forceShow: true },
+      'Andrew Painter': { forceSide: 'left' }
+    };
+
+    let finalDraw = toDraw.filter(e => !(OVERRIDES[e.name] && OVERRIDES[e.name].hide));
+
+    entries.forEach(e => {
+      const ov = OVERRIDES[e.name];
+      if (ov && ov.forceShow && !finalDraw.includes(e)) {
+        finalDraw.push(e);
+      }
+    });
+
+    ctx.save();
+    ctx.font = "500 11px 'Space Grotesk', sans-serif";
+    ctx.fillStyle = cssVar('--text');
+    ctx.textBaseline = 'middle';
+    const chartWidth = chart.chartArea.right;
+
+    finalDraw.forEach(e => {
+      const ov = OVERRIDES[e.name];
+      let placeLeft = e.px > chartWidth - 90;
+      if (ov && ov.forceSide) placeLeft = ov.forceSide === 'left';
+      ctx.textAlign = placeLeft ? 'right' : 'left';
+      const offset = e.r + 5;
+      const lx = placeLeft ? e.px - offset : e.px + offset;
+      ctx.fillText(e.name, lx, e.py);
+    });
+    ctx.restore();
+  }
+};
+
+// thicker/darker zero line on x-axis (composite z-score = 0)
+const zeroLinePlugin = {
+  id: 'zeroLine',
+  beforeDatasetsDraw(chart) {
+    const { ctx, scales: { x, y } } = chart;
+    if (x.min < 0 && x.max > 0) {
+      const xPix = x.getPixelForValue(0);
+      ctx.save();
+      ctx.strokeStyle = cssVar('--zero-line');
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(xPix, y.top);
+      ctx.lineTo(xPix, y.bottom);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+};
+
+let chart;
+function buildChart() {
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: points,
+        backgroundColor: cssVar('--accent-fill'),
+        borderColor: cssVar('--accent'),
+        borderWidth: 1.5,
+        pointRadius: points.map(p => p.r),
+        pointHoverRadius: points.map(p => p.r + 2),
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { right: 70, top: 10, bottom: 4 } },
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false, external: externalTooltip }
+      },
+      scales: {
+        x: {
+          min: -1.7,
+          max: 1.9,
+          title: { display: true, text: 'Composite Z-Score (higher = better)', color: cssVar('--text-secondary'), font: { family: 'Space Grotesk', size: 12, weight: 500 } },
+          grid: { color: cssVar('--grid') },
+          ticks: { color: cssVar('--text-secondary'), font: { family: 'Space Mono', size: 11 } }
+        },
+        y: {
+          min: 2.3,
+          max: 6.4,
+          reverse: true,
+          title: { display: true, text: 'xERA (reversed, lower = better)', color: cssVar('--text-secondary'), font: { family: 'Space Grotesk', size: 12, weight: 500 } },
+          grid: { color: cssVar('--grid') },
+          ticks: { color: cssVar('--text-secondary'), font: { family: 'Space Mono', size: 11 } }
+        }
+      }
+    },
+    plugins: [labelPlugin, zeroLinePlugin]
+  });
+}
+
+buildChart();
+
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (!document.documentElement.hasAttribute('data-theme')) buildChart();
+  });
+}
+</script>
+</body>
+</html>
