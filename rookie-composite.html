@@ -240,7 +240,7 @@
 <body>
   <span class="eyebrow">Rookie Pitchers &middot; Full Season</span>
   <h1>Composite Score vs. xERA</h1>
-  <p class="explainer">Each point is a qualified rookie starter. X-axis is the weighted composite z-score (K-BB% 25%, Stuff+ 25%, CSW% 20%, Z-Contact% 20%, Hard% 15%), all relative to this rookie class only. GB% removed, Hard% weight raised. Y-axis is xERA, reversed so better performance (lower xERA) sits higher. Bubble size scales with innings pitched.</p>
+  <p class="explainer">Rookie starters with minimum 50 IP. X-axis is the weighted composite z-score, relative to this rookie class. Y-axis is xERA, reversed so lower xERA sits higher. Bubble size scales with innings pitched.</p>
   <div class="chart-container">
     <canvas id="rookieChart"></canvas>
     <div id="chartTooltip"></div>
@@ -347,20 +347,41 @@ const labelPlugin = {
       const el = meta.data[i];
       return { px: el.x, py: el.y, r: el.options.radius, name: p.raw.name };
     });
-    entries.sort((a, b) => a.py - b.py);
+
+    // manual overrides: hide specific labels, force a side, or force-include a
+    // label that got skipped by the cluster decluttering. Defined up front so
+    // forceShow names can be pulled out of the clustering pool entirely and
+    // kept at their true original row instead of getting spread out with a
+    // cluster they were never actually drawn as part of.
+    const OVERRIDES = {
+      'Trevor McDonald': { hide: true },
+      'Ryan Johnson': { hide: true },
+      'Gabriel Hughes': { hide: true },
+      'Parker Messick': { forceSide: 'left' },
+      'Walbert Ureña': { forceShow: true, forceSide: 'left', nudgeY: 14 },
+      'Gage Jump': { forceShow: true },
+      'Andrew Painter': { forceSide: 'left' },
+      'Andrew Alvarez': { forceShow: true, forceSide: 'left' },
+      'Jake Bennett': { forceShow: true, forceSide: 'left' }
+    };
+
+    const forcedEntries = entries.filter(e => OVERRIDES[e.name] && OVERRIDES[e.name].forceShow);
+    const clusterable = entries.filter(e => !(OVERRIDES[e.name] && OVERRIDES[e.name].forceShow));
+    clusterable.sort((a, b) => a.py - b.py);
+    const entriesSorted = clusterable; // clustering below operates on this pool only
 
     const clusterGap = 16;   // threshold to decide what counts as "clustered"
     const labelGap = 24;     // minimum spacing enforced between any two drawn labels
 
     // group into clusters based on original (undisplaced) proximity
     const clusters = [];
-    let current = [entries[0]];
-    for (let i = 1; i < entries.length; i++) {
-      if (entries[i].py - entries[i-1].py < clusterGap) {
-        current.push(entries[i]);
+    let current = [entriesSorted[0]];
+    for (let i = 1; i < entriesSorted.length; i++) {
+      if (entriesSorted[i].py - entriesSorted[i-1].py < clusterGap) {
+        current.push(entriesSorted[i]);
       } else {
         clusters.push(current);
-        current = [entries[i]];
+        current = [entriesSorted[i]];
       }
     }
     clusters.push(current);
@@ -394,26 +415,11 @@ const labelPlugin = {
       }
     });
 
-    // manual overrides: hide specific labels, force a side, or force-include a
-    // label that got skipped by the cluster decluttering
-    const OVERRIDES = {
-      'Trevor McDonald': { hide: true },
-      'Andrew Alvarez': { hide: true },
-      'Ryan Johnson': { hide: true },
-      'Parker Messick': { forceSide: 'left' },
-      'Walbert Ureña': { forceShow: true, forceSide: 'right' },
-      'Gage Jump': { forceShow: true },
-      'Andrew Painter': { forceSide: 'left' }
-    };
-
     let finalDraw = toDraw.filter(e => !(OVERRIDES[e.name] && OVERRIDES[e.name].hide));
 
-    entries.forEach(e => {
-      const ov = OVERRIDES[e.name];
-      if (ov && ov.forceShow && !finalDraw.includes(e)) {
-        finalDraw.push(e);
-      }
-    });
+    // forced entries always draw at their true original row, never touched by
+    // cluster spreading, so they stay visually tied to their actual dot
+    forcedEntries.forEach(e => finalDraw.push(e));
 
     ctx.save();
     ctx.font = "500 11px 'Space Grotesk', sans-serif";
@@ -428,7 +434,8 @@ const labelPlugin = {
       ctx.textAlign = placeLeft ? 'right' : 'left';
       const offset = e.r + 5;
       const lx = placeLeft ? e.px - offset : e.px + offset;
-      ctx.fillText(e.name, lx, e.py);
+      const ly = ov && ov.nudgeY ? e.py + ov.nudgeY : e.py;
+      ctx.fillText(e.name, lx, ly);
     });
     ctx.restore();
   }
@@ -481,15 +488,15 @@ function buildChart() {
         x: {
           min: -1.7,
           max: 1.9,
-          title: { display: true, text: 'Composite Z-Score (higher = better)', color: cssVar('--text-secondary'), font: { family: 'Space Grotesk', size: 12, weight: 500 } },
+          title: { display: true, text: 'Composite Z-Score', color: cssVar('--text-secondary'), font: { family: 'Space Grotesk', size: 12, weight: 500 } },
           grid: { color: cssVar('--grid') },
           ticks: { color: cssVar('--text-secondary'), font: { family: 'Space Mono', size: 11 } }
         },
         y: {
-          min: 2.3,
-          max: 6.4,
+          min: 2.5,
+          max: 6.5,
           reverse: true,
-          title: { display: true, text: 'xERA (reversed, lower = better)', color: cssVar('--text-secondary'), font: { family: 'Space Grotesk', size: 12, weight: 500 } },
+          title: { display: true, text: 'xERA (reversed)', color: cssVar('--text-secondary'), font: { family: 'Space Grotesk', size: 12, weight: 500 } },
           grid: { color: cssVar('--grid') },
           ticks: { color: cssVar('--text-secondary'), font: { family: 'Space Mono', size: 11 } }
         }
