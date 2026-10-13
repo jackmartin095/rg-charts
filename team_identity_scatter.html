@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 Team Hitting Identity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6b6b6b;
+  --faint: #d0d0d0;
+  --grid: #e8e8e8;
+  --tooltip-bg: #ffffff;
+  --tooltip-border: #1a1a1a;
+  --tab-bg: #f4f4f4;
+  --tab-active-bg: #1a1a1a;
+  --tab-active-fg: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121212;
+    --fg: #f0f0f0;
+    --muted: #a0a0a0;
+    --faint: #3a3a3a;
+    --grid: #2a2a2a;
+    --tooltip-bg: #1a1a1a;
+    --tooltip-border: #f0f0f0;
+    --tab-bg: #242424;
+    --tab-active-bg: #f0f0f0;
+    --tab-active-fg: #121212;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 24px 16px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 8px 0;
+}
+h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  line-height: 1.15;
+}
+.explainer {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+  max-width: 640px;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: var(--tab-bg);
+  border-radius: 6px;
+  width: fit-content;
+}
+.tab {
+  padding: 8px 16px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--fg); }
+.tab.active { background: var(--tab-active-bg); color: var(--tab-active-fg); }
+.chart-wrap { position: relative; width: 100%; height: 520px; }
+canvas { width: 100% !important; height: 100% !important; }
+.legend {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px 12px;
+  margin-top: 14px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  color: var(--fg);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.footer {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--grid);
+}
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
+  padding: 8px 10px;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--fg);
+  opacity: 0;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+  z-index: 10;
+}
+#tooltip .team-name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+#tooltip .archetype-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+@media (max-width: 560px) {
+  .legend { grid-template-columns: repeat(3, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="eyebrow">2026 Team Hitting Identity</div>
+<h1 id="chart-title">The Archetype Map</h1>
+<p class="explainer" id="chart-explainer">
+  Teams plotted by how often they pull the ball in the air versus how often they hit it hard. Dot color marks their 2026 archetype. Dashed lines mark league average.
+</p>
+<div class="tabs">
+  <button class="tab active" data-view="power">POWER PROFILE</button>
+  <button class="tab" data-view="approach">APPROACH PROFILE</button>
+</div>
+<div class="chart-wrap">
+  <canvas id="chart"></canvas>
+  <div id="tooltip"></div>
+</div>
+<div class="legend" id="legend"></div>
+<div class="footer">
+  <span>Data: Baseball Savant, 2026 regular season</span>
+  <span>@jack_mariners</span>
+</div>
+
+<script>
+const VIEWS = {"power": {"x_label": "HardHit%", "y_label": "PullAir%", "x_min": 33, "x_max": 43, "x_ticks": [34, 36, 38, 40, 42], "y_min": 5, "y_max": 12, "y_ticks": [5, 6, 7, 8, 9, 10, 11, 12], "lg_x": 38.75, "lg_y": 9.15, "datasets": [{"label": "Pull Power", "data": [{"x": 40.23, "y": 10.5, "team": "CWS"}, {"x": 40.95, "y": 10.05, "team": "KCR"}, {"x": 41.72, "y": 10.39, "team": "NYY"}], "backgroundColor": "#c0392b", "borderColor": "#c0392b"}, {"label": "Launch", "data": [{"x": 38.56, "y": 11.43, "team": "CHC"}, {"x": 34.97, "y": 10.01, "team": "CLE"}, {"x": 38.9, "y": 9.22, "team": "DET"}, {"x": 37.5, "y": 10.75, "team": "HOU"}, {"x": 37.69, "y": 10.43, "team": "MIN"}, {"x": 38.41, "y": 10.05, "team": "SEA"}], "backgroundColor": "#e67e22", "borderColor": "#e67e22"}, {"label": "Thumpers", "data": [{"x": 42.12, "y": 9.29, "team": "BAL"}, {"x": 41.85, "y": 9.13, "team": "NYM"}], "backgroundColor": "#c2185b", "borderColor": "#c2185b"}, {"label": "Worm-burners", "data": [{"x": 40.47, "y": 8.22, "team": "SD"}, {"x": 41.31, "y": 8.67, "team": "STL"}, {"x": 40.14, "y": 8.63, "team": "TEX"}], "backgroundColor": "#8b5a3c", "borderColor": "#8b5a3c"}, {"label": "Ground Oppo", "data": [{"x": 40.41, "y": 5.36, "team": "MIL"}], "backgroundColor": "#8e44ad", "borderColor": "#8e44ad"}, {"label": "Contact", "data": [{"x": 34.64, "y": 8.81, "team": "TB"}, {"x": 34.11, "y": 8.65, "team": "TOR"}], "backgroundColor": "#5dade2", "borderColor": "#5dade2"}, {"label": "Discipline", "data": [{"x": 38.16, "y": 10.16, "team": "AZ"}, {"x": 39.74, "y": 8.56, "team": "LAD"}], "backgroundColor": "#1e3a8a", "borderColor": "#1e3a8a"}, {"label": "Hackers", "data": [{"x": 39.99, "y": 8.86, "team": "ATL"}, {"x": 36.27, "y": 10.08, "team": "COL"}, {"x": 37.21, "y": 8.65, "team": "LAA"}, {"x": 39.53, "y": 7.93, "team": "PHI"}, {"x": 39.4, "y": 8.33, "team": "PIT"}], "backgroundColor": "#27ae60", "borderColor": "#27ae60"}, {"label": "Unclassified", "data": [{"x": 38.62, "y": 7.32, "team": "ATH"}, {"x": 35.81, "y": 9.08, "team": "BOS"}, {"x": 39.24, "y": 9.04, "team": "CIN"}, {"x": 37.91, "y": 9.15, "team": "MIA"}, {"x": 37.28, "y": 8.85, "team": "SF"}, {"x": 39.26, "y": 8.82, "team": "WSH"}], "backgroundColor": "#95a5a6", "borderColor": "#95a5a6"}], "overrides": {"SD": {"forceSide": "right"}, "TEX": {"forceSide": "right"}, "STL": {"forceSide": "above"}, "LAA": {"forceSide": "below"}, "PIT": {"forceSide": "below"}, "PHI": {"forceSide": "left"}, "TOR": {"forceSide": "below"}, "TB": {"forceSide": "above"}, "LAD": {"forceSide": "above"}, "ATL": {"forceSide": "right"}}}, "approach": {"x_label": "Chase%", "y_label": "SwStr%", "x_min": 28, "x_max": 38, "x_ticks": [28, 30, 32, 34, 36, 38], "y_min": 8, "y_max": 13, "y_ticks": [8, 9, 10, 11, 12, 13], "lg_x": 32.8, "lg_y": 10.87, "datasets": [{"label": "Pull Power", "data": [{"x": 31.37, "y": 11.8, "team": "CWS"}, {"x": 33.26, "y": 9.9, "team": "KCR"}, {"x": 31.63, "y": 11.56, "team": "NYY"}], "backgroundColor": "#c0392b", "borderColor": "#c0392b"}, {"label": "Launch", "data": [{"x": 30.12, "y": 9.64, "team": "CHC"}, {"x": 31.34, "y": 9.83, "team": "CLE"}, {"x": 30.04, "y": 10.34, "team": "DET"}, {"x": 33.98, "y": 11.37, "team": "HOU"}, {"x": 32.69, "y": 11.15, "team": "MIN"}, {"x": 33.61, "y": 11.4, "team": "SEA"}], "backgroundColor": "#e67e22", "borderColor": "#e67e22"}, {"label": "Thumpers", "data": [{"x": 31.6, "y": 11.29, "team": "BAL"}, {"x": 32.96, "y": 10.96, "team": "NYM"}], "backgroundColor": "#c2185b", "borderColor": "#c2185b"}, {"label": "Worm-burners", "data": [{"x": 33.54, "y": 11.15, "team": "SD"}, {"x": 33.02, "y": 10.65, "team": "STL"}, {"x": 32.82, "y": 11.55, "team": "TEX"}], "backgroundColor": "#8b5a3c", "borderColor": "#8b5a3c"}, {"label": "Ground Oppo", "data": [{"x": 29.11, "y": 9.59, "team": "MIL"}], "backgroundColor": "#8e44ad", "borderColor": "#8e44ad"}, {"label": "Contact", "data": [{"x": 33.26, "y": 8.67, "team": "TB"}, {"x": 35.05, "y": 9.87, "team": "TOR"}], "backgroundColor": "#5dade2", "borderColor": "#5dade2"}, {"label": "Discipline", "data": [{"x": 32.58, "y": 9.26, "team": "AZ"}, {"x": 29.92, "y": 10.08, "team": "LAD"}], "backgroundColor": "#1e3a8a", "borderColor": "#1e3a8a"}, {"label": "Hackers", "data": [{"x": 36.11, "y": 11.27, "team": "ATL"}, {"x": 37.37, "y": 12.35, "team": "COL"}, {"x": 34.19, "y": 12.76, "team": "LAA"}, {"x": 34.85, "y": 10.97, "team": "PHI"}, {"x": 33.15, "y": 12.01, "team": "PIT"}], "backgroundColor": "#27ae60", "borderColor": "#27ae60"}, {"label": "Unclassified", "data": [{"x": 33.23, "y": 11.85, "team": "ATH"}, {"x": 34.1, "y": 11.09, "team": "BOS"}, {"x": 30.62, "y": 11.35, "team": "CIN"}, {"x": 31.63, "y": 10.82, "team": "MIA"}, {"x": 33.71, "y": 10.63, "team": "SF"}, {"x": 33.24, "y": 11.03, "team": "WSH"}], "backgroundColor": "#95a5a6", "borderColor": "#95a5a6"}], "overrides": {"NYY": {"forceSide": "left"}, "CWS": {"forceSide": "right"}, "KCR": {"forceSide": "right"}, "COL": {"forceSide": "above"}, "LAA": {"forceSide": "right"}, "PIT": {"forceSide": "above"}, "ATL": {"forceSide": "right"}, "PHI": {"forceSide": "left"}, "CHC": {"forceSide": "below"}, "DET": {"forceSide": "below"}, "CLE": {"forceSide": "left"}, "HOU": {"forceSide": "right"}, "MIN": {"forceSide": "left"}, "SEA": {"forceSide": "above"}, "STL": {"forceSide": "below"}, "SD": {"forceSide": "right"}, "TEX": {"forceSide": "above"}, "BAL": {"forceSide": "left"}, "NYM": {"forceSide": "left"}, "TB": {"forceSide": "below"}, "TOR": {"forceSide": "above"}, "LAD": {"forceSide": "above"}, "AZ": {"forceSide": "below"}, "MIL": {"forceSide": "below"}}}};
+const LABELED_ARCHETYPES = new Set(["Pull Power", "Launch", "Thumpers", "Worm-burners", "Ground Oppo", "Contact", "Discipline", "Hackers"]);
+
+const TITLES = {
+  power: {
+    h1: 'The Archetype Map',
+    explainer: 'Teams plotted by how often they pull the ball in the air versus how often they hit it hard. Dot color marks their 2026 archetype. Dashed lines mark league average.',
+  },
+  approach: {
+    h1: 'The Archetype Map',
+    explainer: 'Teams plotted by how often they chased pitches outside the zone versus how often they swung and missed. Dot color marks their 2026 archetype. Dashed lines mark league average.',
+  },
+};
+
+let currentView = 'power';
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function getColors() {
+  return {
+    muted: cssVar('--muted'),
+    faint: cssVar('--faint'),
+    grid: cssVar('--grid'),
+    fg: cssVar('--fg'),
+  };
+}
+
+const tooltipEl = document.getElementById('tooltip');
+function externalTooltip(context) {
+  const { tooltip } = context;
+  if (tooltip.opacity === 0) {
+    tooltipEl.style.opacity = 0;
+    return;
+  }
+  const dp = tooltip.dataPoints[0];
+  const team = dp.raw.team;
+  const archetype = dp.dataset.label;
+  const archColor = dp.dataset.backgroundColor;
+  const v = VIEWS[currentView];
+  const xv = dp.raw.x.toFixed(2);
+  const yv = dp.raw.y.toFixed(2);
+  tooltipEl.innerHTML =
+    `<div class="team-name">${team}</div>` +
+    `<div class="archetype-tag" style="color:${archColor}">${archetype}</div>` +
+    `${v.x_label} ${xv}<br>${v.y_label} ${yv}`;
+  tooltipEl.style.left = (tooltip.caretX + 12) + 'px';
+  tooltipEl.style.top = (tooltip.caretY - 10) + 'px';
+  tooltipEl.style.opacity = 1;
+}
+
+const avgLinesPlugin = {
+  id: 'avgLines',
+  beforeDatasetsDraw(chart) {
+    const { ctx, chartArea: { left, right, top, bottom }, scales: { x, y } } = chart;
+    const c = getColors();
+    const v = VIEWS[currentView];
+    const xPx = x.getPixelForValue(v.lg_x);
+    const yPx = y.getPixelForValue(v.lg_y);
+    ctx.save();
+    ctx.strokeStyle = c.faint;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xPx, top);
+    ctx.lineTo(xPx, bottom);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(left, yPx);
+    ctx.lineTo(right, yPx);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '500 9px "Space Mono", monospace';
+    ctx.fillStyle = c.muted;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('LG AVG', xPx + 4, top + 2);
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('LG AVG', left + 4, yPx - 2);
+    ctx.restore();
+  }
+};
+
+const teamLabelsPlugin = {
+  id: 'teamLabels',
+  afterDatasetsDraw(chart) {
+    const { ctx, chartArea, scales: { x, y } } = chart;
+    const overrides = VIEWS[currentView].overrides || {};
+
+    const items = [];
+    chart.data.datasets.forEach(ds => {
+      if (!LABELED_ARCHETYPES.has(ds.label)) return;
+      ds.data.forEach(d => {
+        items.push({ ...d, color: ds.backgroundColor, dot: 7 });
+      });
+    });
+
+    const xs = items.map(i => i.x).sort((a, b) => a - b);
+    const medX = xs[Math.floor(xs.length / 2)];
+
+    items.forEach(i => {
+      const ov = overrides[i.team] || {};
+      if (ov.forceSide === 'left') i.side = 'left';
+      else if (ov.forceSide === 'right') i.side = 'right';
+      else if (ov.forceSide === 'above') i.side = 'above';
+      else if (ov.forceSide === 'below') i.side = 'below';
+      else i.side = i.x < medX ? 'left' : 'right';
+      i.nudgeY = ov.nudgeY || 0;
+      i.nudgeX = ov.nudgeX || 0;
+    });
+
+    ctx.save();
+    ctx.font = '600 10px "Space Mono", monospace';
+    ctx.textBaseline = 'middle';
+
+    const sides = { left: [], right: [], above: [], below: [] };
+    items.forEach(i => {
+      i.px = x.getPixelForValue(i.x) + i.nudgeX;
+      i.py = y.getPixelForValue(i.y) + i.nudgeY;
+      sides[i.side].push(i);
+    });
+
+    const MIN_GAP = 12;
+    ['left', 'right'].forEach(side => {
+      const arr = sides[side].sort((a, b) => a.py - b.py);
+      for (let i = 1; i < arr.length; i++) {
+        const gap = arr[i].py - arr[i-1].py;
+        if (gap < MIN_GAP) arr[i].py = arr[i-1].py + MIN_GAP;
+      }
+    });
+    ['above', 'below'].forEach(side => {
+      const arr = sides[side].sort((a, b) => a.px - b.px);
+      for (let i = 1; i < arr.length; i++) {
+        const gap = arr[i].px - arr[i-1].px;
+        if (gap < 30) arr[i].px = arr[i-1].px + 30;
+      }
+    });
+
+    items.forEach(i => {
+      if (i.py < chartArea.top + 6) i.py = chartArea.top + 6;
+      if (i.py > chartArea.bottom - 6) i.py = chartArea.bottom - 6;
+      if (i.px < chartArea.left + 15) i.px = chartArea.left + 15;
+      if (i.px > chartArea.right - 15) i.px = chartArea.right - 15;
+    });
+
+    items.forEach(i => {
+      ctx.fillStyle = i.color;
+      const dotR = i.dot;
+      if (i.side === 'left') {
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(i.team, i.px - dotR - 3, i.py);
+      } else if (i.side === 'right') {
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(i.team, i.px + dotR + 3, i.py);
+      } else if (i.side === 'above') {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(i.team, i.px, i.py - dotR - 2);
+      } else {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(i.team, i.px, i.py + dotR + 2);
+      }
+    });
+    ctx.restore();
+  }
+};
+
+let chart;
+function buildChart() {
+  const c = getColors();
+  const v = VIEWS[currentView];
+  const ctx = document.getElementById('chart').getContext('2d');
+
+  if (chart) chart.destroy();
+
+  const datasets = v.datasets.map(ds => ({
+    ...ds,
+    pointRadius: 7,
+    pointHoverRadius: 9,
+  }));
+
+  chart = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false, external: externalTooltip },
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          min: v.x_min, max: v.x_max,
+          title: {
+            display: true,
+            text: v.x_label,
+            color: c.fg,
+            font: { family: "'Space Grotesk', sans-serif", size: 12, weight: '600' },
+          },
+          ticks: {
+            color: c.muted,
+            font: { family: "'Space Mono', monospace", size: 10 },
+            callback: val => val + '%',
+          },
+          grid: { color: c.grid, drawTicks: false },
+          border: { color: c.grid },
+          afterBuildTicks: (axis) => { axis.ticks = v.x_ticks.map(val => ({ value: val })); },
+        },
+        y: {
+          type: 'linear',
+          min: v.y_min, max: v.y_max,
+          title: {
+            display: true,
+            text: v.y_label,
+            color: c.fg,
+            font: { family: "'Space Grotesk', sans-serif", size: 12, weight: '600' },
+          },
+          ticks: {
+            color: c.muted,
+            font: { family: "'Space Mono', monospace", size: 10 },
+            callback: val => val + '%',
+          },
+          grid: { color: c.grid, drawTicks: false },
+          border: { color: c.grid },
+          afterBuildTicks: (axis) => { axis.ticks = v.y_ticks.map(val => ({ value: val })); },
+        },
+      },
+    },
+    plugins: [avgLinesPlugin, teamLabelsPlugin],
+  });
+}
+
+function buildLegend() {
+  const legendEl = document.getElementById('legend');
+  const sampleDatasets = VIEWS.power.datasets;
+  legendEl.innerHTML = sampleDatasets.map(ds =>
+    `<div class="legend-item">
+      <div class="legend-swatch" style="background:${ds.backgroundColor}"></div>
+      <div>${ds.label}</div>
+    </div>`
+  ).join('');
+}
+
+function setView(view) {
+  currentView = view;
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === view);
+  });
+  document.getElementById('chart-title').textContent = TITLES[view].h1;
+  document.getElementById('chart-explainer').textContent = TITLES[view].explainer;
+  buildChart();
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => setView(t.dataset.view));
+});
+
+buildLegend();
+buildChart();
+
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    buildChart();
+  });
+}
+</script>
+</body>
+</html>
