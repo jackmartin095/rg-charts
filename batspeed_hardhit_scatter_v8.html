@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bat Speed and HardHit% for Under 25 Hitters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #7a7973;
+  --grid: #e7e6e2;
+  --ref: #8b8a84;
+  --reached: #2a78d6;
+  --below: #eb6834;
+  --zone: rgba(42, 120, 214, 0.08);
+  --tip-bg: #ffffff;
+  --tip-border: #d7d6d1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --ink-3: #9a998f;
+    --grid: #2f2f2d;
+    --ref: #77766f;
+    --reached: #3987e5;
+    --below: #d95926;
+    --zone: rgba(57, 135, 229, 0.12);
+    --tip-bg: #242423;
+    --tip-border: #3d3d3a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --ink-3: #9a998f;
+  --grid: #2f2f2d;
+  --ref: #77766f;
+  --reached: #3987e5;
+  --below: #d95926;
+  --zone: rgba(57, 135, 229, 0.12);
+  --tip-bg: #242423;
+  --tip-border: #3d3d3a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--surface); }
+body {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  color: var(--ink);
+  padding: 20px 16px 16px;
+}
+.wrap { max-width: 780px; margin: 0 auto; }
+.eyebrow {
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3); font-weight: 600; margin: 0 0 6px;
+}
+h1 { font-size: 24px; line-height: 1.2; margin: 0 0 8px; font-weight: 700; }
+.sub { font-size: 14px; line-height: 1.5; color: var(--ink-2); margin: 0 0 14px; }
+.chart-box { position: relative; width: 100%; height: 540px; }
+.chart-box canvas { display: block; }
+.legend {
+  display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0 0;
+  font-size: 12.5px; color: var(--ink-2);
+}
+.legend span.item { display: inline-flex; align-items: center; gap: 7px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.dot.reached { background: var(--reached); }
+.dot.below { border: 2px solid var(--below); background: transparent; }
+.swatch { width: 16px; height: 12px; background: var(--zone); border: 1px dashed var(--ref); display: inline-block; }
+.stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0 0;
+}
+.stat { border: 1px solid var(--grid); border-radius: 8px; padding: 9px 11px; }
+.stat .n { font-family: 'Space Mono', monospace; font-size: 18px; font-weight: 700; }
+.stat .t { font-size: 12px; color: var(--ink-2); margin-top: 2px; line-height: 1.35; }
+.foot { margin: 14px 0 0; font-size: 11px; color: var(--ink-3); line-height: 1.5; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+#tip {
+  position: absolute; pointer-events: none; opacity: 0; z-index: 5;
+  background: var(--tip-bg); color: var(--ink); border: 1px solid var(--tip-border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; line-height: 1.45;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.16); min-width: 150px;
+}
+#tip .nm { font-weight: 700; font-size: 13px; }
+#tip .tm { color: var(--ink-3); font-weight: 500; }
+#tip .row { display: flex; justify-content: space-between; gap: 16px; }
+#tip .row span:last-child { font-family: 'Space Mono', monospace; }
+@media (max-width: 560px) {
+  h1 { font-size: 20px; }
+  .chart-box { height: 480px; }
+  .stats { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Hitters under 25 &middot; 2026</p>
+  <h1>Bat Speed and HardHit% for Under 25 Hitters</h1>
+  <p class="sub">Each dot is a hitter under 25 with at least 50 plate appearances. The shaded zone marks a bat speed of 73+ mph with a HardHit% of 46% or higher. Filled dots reached a wRC+ of 100+</p>
+  <div class="chart-box" id="box">
+    <canvas id="c"></canvas>
+    <div id="tip"></div>
+  </div>
+  <div class="legend">
+    <span class="item"><span class="dot reached"></span>wRC+ 100+ (48 hitters)</span>
+    <span class="item"><span class="dot below"></span>wRC+ below 100 (70 hitters)</span>
+    <span class="item"><span class="swatch"></span>73+ mph and 46%+ HardHit% (21 hitters)</span>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n">21</div><div class="t">hitters in the zone</div></div>
+    <div class="stat"><div class="n">17 (81%)</div><div class="t">reached wRC+ 100+, compared with 41% of all 118 hitters</div></div>
+    <div class="stat"><div class="n">15 (71%)</div><div class="t">reached wRC+ 110+, compared with 31% of all 118 hitters</div></div>
+  </div>
+  <div class="foot">
+    <span>Data: FanGraphs leaderboards, end of 2026 season, hitters under 25 with 50+ PA (n = 118). Labeled hitters, outlined in orange, are the four discussed in this piece.</span>
+    <span>@_jackmrtn</span>
+  </div>
+</div>
+<script>
+const DATA = [{"name": "Junior Caminero", "team": "TBR", "x": 79.46, "y": 49.59, "wrc": 142.1, "pa": 702, "xwoba": 0.364, "reached": true, "zone": true, "label": ""}, {"name": "Jordan Walker", "team": "STL", "x": 79.26, "y": 49.89, "wrc": 118.7, "pa": 667, "xwoba": 0.34, "reached": true, "zone": true, "label": ""}, {"name": "Nick Kurtz", "team": "ATH", "x": 78.19, "y": 57.35, "wrc": 138.2, "pa": 434, "xwoba": 0.374, "reached": true, "zone": true, "label": ""}, {"name": "Cam Smith", "team": "HOU", "x": 77.93, "y": 43.36, "wrc": 86.4, "pa": 568, "xwoba": 0.316, "reached": false, "zone": false, "label": ""}, {"name": "Joshua Báez", "team": "STL", "x": 77.53, "y": 47.06, "wrc": 112.8, "pa": 108, "xwoba": 0.303, "reached": true, "zone": true, "label": "Báez"}, {"name": "Jac Caglianone", "team": "KCR", "x": 77.0, "y": 54.74, "wrc": 129.0, "pa": 553, "xwoba": 0.357, "reached": true, "zone": true, "label": ""}, {"name": "James Wood", "team": "WSN", "x": 76.89, "y": 58.88, "wrc": 141.6, "pa": 623, "xwoba": 0.403, "reached": true, "zone": true, "label": ""}, {"name": "Henry Bolte", "team": "ATH", "x": 76.79, "y": 48.25, "wrc": 110.6, "pa": 473, "xwoba": 0.317, "reached": true, "zone": true, "label": ""}, {"name": "Colson Montgomery", "team": "CHW", "x": 76.61, "y": 40.82, "wrc": 90.5, "pa": 638, "xwoba": 0.294, "reached": false, "zone": false, "label": ""}, {"name": "Elly De La Cruz", "team": "CIN", "x": 76.2, "y": 53.75, "wrc": 139.2, "pa": 636, "xwoba": 0.376, "reached": true, "zone": true, "label": ""}, {"name": "Agustín Ramírez", "team": "MIA", "x": 75.89, "y": 41.57, "wrc": 86.8, "pa": 255, "xwoba": 0.285, "reached": false, "zone": false, "label": ""}, {"name": "Abimelec Ortiz", "team": "WSN", "x": 75.8, "y": 38.71, "wrc": 49.6, "pa": 136, "xwoba": 0.271, "reached": false, "zone": false, "label": ""}, {"name": "Coby Mayo", "team": "BAL", "x": 75.71, "y": 47.27, "wrc": 112.2, "pa": 454, "xwoba": 0.336, "reached": true, "zone": true, "label": ""}, {"name": "Yohendrick Piñango", "team": "TOR", "x": 75.6, "y": 45.6, "wrc": 97.0, "pa": 180, "xwoba": 0.309, "reached": false, "zone": false, "label": ""}, {"name": "Roman Anthony", "team": "BOS", "x": 75.56, "y": 46.58, "wrc": 105.6, "pa": 242, "xwoba": 0.341, "reached": true, "zone": true, "label": ""}, {"name": "Konnor Griffin", "team": "PIT", "x": 75.43, "y": 37.5, "wrc": 98.4, "pa": 339, "xwoba": 0.316, "reached": false, "zone": false, "label": ""}, {"name": "Lazaro Montes", "team": "SEA", "x": 75.31, "y": 42.86, "wrc": 120.4, "pa": 59, "xwoba": 0.313, "reached": true, "zone": false, "label": "Montes"}, {"name": "Pete Crow-Armstrong", "team": "CHC", "x": 75.09, "y": 48.65, "wrc": 156.5, "pa": 726, "xwoba": 0.374, "reached": true, "zone": true, "label": ""}, {"name": "Owen Caissie", "team": "MIA", "x": 75.08, "y": 44.89, "wrc": 88.9, "pa": 330, "xwoba": 0.303, "reached": false, "zone": false, "label": ""}, {"name": "Héctor Rodríguez", "team": "CIN", "x": 75.05, "y": 34.29, "wrc": 82.4, "pa": 152, "xwoba": 0.251, "reached": false, "zone": false, "label": ""}, {"name": "Brett Callahan", "team": "DET", "x": 74.98, "y": 44.44, "wrc": 71.8, "pa": 80, "xwoba": 0.296, "reached": false, "zone": false, "label": ""}, {"name": "Esmerlyn Valdez", "team": "PIT", "x": 74.81, "y": 49.26, "wrc": 130.0, "pa": 287, "xwoba": 0.332, "reached": true, "zone": true, "label": ""}, {"name": "Sean Keys", "team": "TOR", "x": 74.78, "y": 53.85, "wrc": 56.8, "pa": 66, "xwoba": 0.262, "reached": false, "zone": true, "label": ""}, {"name": "Marcelo Mayer", "team": "- - -", "x": 74.56, "y": 35.26, "wrc": 58.7, "pa": 245, "xwoba": 0.257, "reached": false, "zone": false, "label": ""}, {"name": "Jasson Domínguez", "team": "NYY", "x": 74.53, "y": 38.89, "wrc": 75.9, "pa": 222, "xwoba": 0.289, "reached": false, "zone": false, "label": ""}, {"name": "Victor Bericoto", "team": "SFG", "x": 74.52, "y": 51.25, "wrc": 88.6, "pa": 116, "xwoba": 0.299, "reached": false, "zone": true, "label": ""}, {"name": "Jhostynxon Garcia", "team": "PIT", "x": 74.5, "y": 31.25, "wrc": 3.1, "pa": 50, "xwoba": 0.24, "reached": false, "zone": false, "label": ""}, {"name": "Tyler Soderstrom", "team": "ATH", "x": 74.42, "y": 45.42, "wrc": 116.5, "pa": 453, "xwoba": 0.327, "reached": true, "zone": false, "label": ""}, {"name": "Jackson Chourio", "team": "MIL", "x": 74.41, "y": 46.67, "wrc": 129.6, "pa": 573, "xwoba": 0.344, "reached": true, "zone": true, "label": ""}, {"name": "Denzer Guzman", "team": "LAA", "x": 74.35, "y": 34.62, "wrc": 68.2, "pa": 304, "xwoba": 0.265, "reached": false, "zone": false, "label": ""}, {"name": "Samuel Basallo", "team": "BAL", "x": 74.27, "y": 42.8, "wrc": 94.7, "pa": 399, "xwoba": 0.318, "reached": false, "zone": false, "label": ""}, {"name": "Joe Mack", "team": "MIA", "x": 74.26, "y": 38.33, "wrc": 85.9, "pa": 330, "xwoba": 0.292, "reached": false, "zone": false, "label": ""}, {"name": "Francisco Alvarez", "team": "NYM", "x": 74.19, "y": 47.58, "wrc": 98.6, "pa": 420, "xwoba": 0.322, "reached": false, "zone": true, "label": ""}, {"name": "Dylan Crews", "team": "WSN", "x": 74.06, "y": 43.29, "wrc": 81.6, "pa": 443, "xwoba": 0.317, "reached": false, "zone": false, "label": ""}, {"name": "Max Muncy", "team": "ATH", "x": 74.05, "y": 43.45, "wrc": 82.3, "pa": 284, "xwoba": 0.288, "reached": false, "zone": false, "label": ""}, {"name": "Victor Mesa Jr.", "team": "TBR", "x": 74.03, "y": 42.16, "wrc": 128.2, "pa": 262, "xwoba": 0.329, "reached": true, "zone": false, "label": ""}, {"name": "Jose Fernandez", "team": "ARI", "x": 73.96, "y": 38.61, "wrc": 78.5, "pa": 222, "xwoba": 0.281, "reached": false, "zone": false, "label": ""}, {"name": "Carter Jensen", "team": "KCR", "x": 73.87, "y": 44.78, "wrc": 115.9, "pa": 603, "xwoba": 0.318, "reached": true, "zone": false, "label": ""}, {"name": "Charles McAdoo", "team": "TOR", "x": 73.74, "y": 25.68, "wrc": 92.8, "pa": 106, "xwoba": 0.289, "reached": false, "zone": false, "label": ""}, {"name": "Max Clark", "team": "DET", "x": 73.68, "y": 38.03, "wrc": 115.3, "pa": 206, "xwoba": 0.314, "reached": true, "zone": false, "label": ""}, {"name": "Kaelen Culpepper", "team": "MIN", "x": 73.67, "y": 31.11, "wrc": 103.6, "pa": 128, "xwoba": 0.287, "reached": true, "zone": false, "label": ""}, {"name": "Leo Bernal", "team": "STL", "x": 73.6, "y": 55.71, "wrc": 123.8, "pa": 102, "xwoba": 0.347, "reached": true, "zone": true, "label": "Bernal"}, {"name": "Brady House", "team": "WSN", "x": 73.53, "y": 47.84, "wrc": 94.4, "pa": 355, "xwoba": 0.333, "reached": false, "zone": true, "label": ""}, {"name": "Lucas Spence", "team": "HOU", "x": 73.5, "y": 48.48, "wrc": 129.9, "pa": 63, "xwoba": 0.305, "reached": true, "zone": true, "label": "Spence"}, {"name": "Bryce Eldridge", "team": "SFG", "x": 73.42, "y": 52.22, "wrc": 131.2, "pa": 448, "xwoba": 0.359, "reached": true, "zone": true, "label": ""}, {"name": "Jackson Merrill", "team": "SDP", "x": 73.37, "y": 48.7, "wrc": 105.3, "pa": 664, "xwoba": 0.347, "reached": true, "zone": true, "label": ""}, {"name": "Cole Carrigg", "team": "COL", "x": 73.21, "y": 37.6, "wrc": 110.0, "pa": 372, "xwoba": 0.316, "reached": true, "zone": false, "label": ""}, {"name": "Brice Matthews", "team": "HOU", "x": 72.98, "y": 36.36, "wrc": 63.9, "pa": 233, "xwoba": 0.261, "reached": false, "zone": false, "label": ""}, {"name": "Kahlil Watson", "team": "CLE", "x": 72.96, "y": 32.14, "wrc": 66.8, "pa": 91, "xwoba": 0.246, "reached": false, "zone": false, "label": ""}, {"name": "Wyatt Langford", "team": "TEX", "x": 72.77, "y": 36.39, "wrc": 115.1, "pa": 471, "xwoba": 0.319, "reached": true, "zone": false, "label": ""}, {"name": "Blaze Jordan", "team": "STL", "x": 72.71, "y": 45.0, "wrc": 78.8, "pa": 199, "xwoba": 0.317, "reached": false, "zone": false, "label": ""}, {"name": "Nick Yorke", "team": "PIT", "x": 72.64, "y": 43.75, "wrc": 56.8, "pa": 117, "xwoba": 0.289, "reached": false, "zone": false, "label": ""}, {"name": "Colt Emerson", "team": "SEA", "x": 72.55, "y": 31.21, "wrc": 66.6, "pa": 241, "xwoba": 0.248, "reached": false, "zone": false, "label": ""}, {"name": "Dylan Beavers", "team": "BAL", "x": 72.5, "y": 38.33, "wrc": 93.7, "pa": 363, "xwoba": 0.295, "reached": false, "zone": false, "label": ""}, {"name": "Zac Veen", "team": "COL", "x": 72.49, "y": 37.5, "wrc": 93.1, "pa": 79, "xwoba": 0.275, "reached": false, "zone": false, "label": ""}, {"name": "Angel Genao", "team": "CLE", "x": 72.45, "y": 51.89, "wrc": 63.4, "pa": 139, "xwoba": 0.286, "reached": false, "zone": false, "label": ""}, {"name": "Ryan Waldschmidt", "team": "ARI", "x": 72.41, "y": 29.65, "wrc": 93.2, "pa": 284, "xwoba": 0.297, "reached": false, "zone": false, "label": ""}, {"name": "George Lombard Jr.", "team": "NYY", "x": 72.3, "y": 35.14, "wrc": 92.7, "pa": 166, "xwoba": 0.298, "reached": false, "zone": false, "label": ""}, {"name": "Noelvi Marte", "team": "CIN", "x": 72.23, "y": 30.22, "wrc": 46.7, "pa": 201, "xwoba": 0.237, "reached": false, "zone": false, "label": ""}, {"name": "Luisangel Acuña", "team": "CHW", "x": 72.23, "y": 36.47, "wrc": 49.8, "pa": 224, "xwoba": 0.269, "reached": false, "zone": false, "label": ""}, {"name": "Moisés Ballesteros", "team": "- - -", "x": 72.23, "y": 45.19, "wrc": 72.1, "pa": 352, "xwoba": 0.29, "reached": false, "zone": false, "label": ""}, {"name": "Thomas Saggese", "team": "STL", "x": 72.21, "y": 43.1, "wrc": 80.3, "pa": 180, "xwoba": 0.309, "reached": false, "zone": false, "label": ""}, {"name": "Ezequiel Tovar", "team": "COL", "x": 72.15, "y": 33.24, "wrc": 55.1, "pa": 506, "xwoba": 0.281, "reached": false, "zone": false, "label": ""}, {"name": "Pedro Ramírez", "team": "CHC", "x": 72.13, "y": 38.97, "wrc": 100.0, "pa": 266, "xwoba": 0.284, "reached": false, "zone": false, "label": ""}, {"name": "Kyle Teel", "team": "CHW", "x": 72.11, "y": 47.14, "wrc": 102.5, "pa": 144, "xwoba": 0.321, "reached": true, "zone": false, "label": ""}, {"name": "Sal Stewart", "team": "CIN", "x": 72.1, "y": 41.63, "wrc": 112.1, "pa": 700, "xwoba": 0.343, "reached": true, "zone": false, "label": ""}, {"name": "John Peck", "team": "DET", "x": 72.03, "y": 37.74, "wrc": 36.7, "pa": 80, "xwoba": 0.31, "reached": false, "zone": false, "label": ""}, {"name": "Colt Keith", "team": "DET", "x": 72.01, "y": 42.05, "wrc": 103.8, "pa": 423, "xwoba": 0.333, "reached": true, "zone": false, "label": ""}, {"name": "Tommy Troy", "team": "ARI", "x": 72.0, "y": 30.21, "wrc": 77.3, "pa": 143, "xwoba": 0.304, "reached": false, "zone": false, "label": ""}, {"name": "Christian Moore", "team": "LAA", "x": 71.99, "y": 39.08, "wrc": 48.9, "pa": 147, "xwoba": 0.254, "reached": false, "zone": false, "label": ""}, {"name": "Walker Jenkins", "team": "MIN", "x": 71.97, "y": 27.27, "wrc": 92.3, "pa": 93, "xwoba": 0.31, "reached": false, "zone": false, "label": ""}, {"name": "Jimmy Crooks", "team": "STL", "x": 71.9, "y": 48.28, "wrc": 65.1, "pa": 149, "xwoba": 0.294, "reached": false, "zone": false, "label": ""}, {"name": "JJ Wetherholt", "team": "STL", "x": 71.86, "y": 44.83, "wrc": 101.1, "pa": 619, "xwoba": 0.347, "reached": true, "zone": false, "label": ""}, {"name": "Alejandro Osuna", "team": "TEX", "x": 71.7, "y": 29.17, "wrc": 94.7, "pa": 233, "xwoba": 0.301, "reached": false, "zone": false, "label": ""}, {"name": "Evan Carter", "team": "TEX", "x": 71.59, "y": 34.95, "wrc": 74.2, "pa": 455, "xwoba": 0.28, "reached": false, "zone": false, "label": ""}, {"name": "Cole Young", "team": "SEA", "x": 71.55, "y": 37.5, "wrc": 102.5, "pa": 638, "xwoba": 0.316, "reached": true, "zone": false, "label": ""}, {"name": "Chase DeLauter", "team": "CLE", "x": 71.5, "y": 46.15, "wrc": 131.4, "pa": 559, "xwoba": 0.346, "reached": true, "zone": false, "label": ""}, {"name": "Angel Martínez", "team": "CLE", "x": 71.47, "y": 35.08, "wrc": 108.5, "pa": 416, "xwoba": 0.299, "reached": true, "zone": false, "label": ""}, {"name": "Daylen Lile", "team": "WSN", "x": 71.46, "y": 37.97, "wrc": 93.9, "pa": 655, "xwoba": 0.324, "reached": false, "zone": false, "label": ""}, {"name": "Luis Lara", "team": "MIL", "x": 71.38, "y": 41.5, "wrc": 79.4, "pa": 212, "xwoba": 0.293, "reached": false, "zone": false, "label": ""}, {"name": "Hao-Yu Lee", "team": "DET", "x": 71.34, "y": 41.3, "wrc": 107.1, "pa": 364, "xwoba": 0.302, "reached": true, "zone": false, "label": ""}, {"name": "Masyn Winn", "team": "STL", "x": 71.29, "y": 34.9, "wrc": 78.1, "pa": 532, "xwoba": 0.297, "reached": false, "zone": false, "label": ""}, {"name": "Kevin McGonigle", "team": "DET", "x": 71.23, "y": 37.52, "wrc": 129.3, "pa": 707, "xwoba": 0.355, "reached": true, "zone": false, "label": ""}, {"name": "Jacob Gonzalez", "team": "- - -", "x": 71.16, "y": 37.13, "wrc": 75.2, "pa": 227, "xwoba": 0.305, "reached": false, "zone": false, "label": ""}, {"name": "LuJames Groover", "team": "ARI", "x": 71.06, "y": 45.95, "wrc": 50.6, "pa": 54, "xwoba": 0.286, "reached": false, "zone": false, "label": ""}, {"name": "Carson Benge", "team": "NYM", "x": 71.0, "y": 38.77, "wrc": 117.6, "pa": 654, "xwoba": 0.341, "reached": true, "zone": false, "label": ""}, {"name": "Alex Freeland", "team": "LAD", "x": 70.83, "y": 39.51, "wrc": 86.2, "pa": 269, "xwoba": 0.297, "reached": false, "zone": false, "label": ""}, {"name": "Jackson Holliday", "team": "BAL", "x": 70.56, "y": 33.05, "wrc": 81.4, "pa": 354, "xwoba": 0.293, "reached": false, "zone": false, "label": ""}, {"name": "A.J. Ewing", "team": "NYM", "x": 70.41, "y": 42.32, "wrc": 96.9, "pa": 492, "xwoba": 0.32, "reached": false, "zone": false, "label": ""}, {"name": "Kyle Karros", "team": "COL", "x": 70.17, "y": 41.08, "wrc": 99.4, "pa": 475, "xwoba": 0.334, "reached": false, "zone": false, "label": ""}, {"name": "Cooper Pratt", "team": "MIL", "x": 69.92, "y": 27.37, "wrc": 101.8, "pa": 266, "xwoba": 0.315, "reached": true, "zone": false, "label": ""}, {"name": "Drew Romo", "team": "CHW", "x": 69.87, "y": 26.47, "wrc": 51.3, "pa": 206, "xwoba": 0.262, "reached": false, "zone": false, "label": ""}, {"name": "Cam Cauley", "team": "TEX", "x": 69.8, "y": 20.45, "wrc": 78.0, "pa": 65, "xwoba": 0.235, "reached": false, "zone": false, "label": ""}, {"name": "Travis Bazzana", "team": "CLE", "x": 69.76, "y": 35.73, "wrc": 109.9, "pa": 517, "xwoba": 0.299, "reached": true, "zone": false, "label": ""}, {"name": "Petey Halpin", "team": "CLE", "x": 69.72, "y": 25.5, "wrc": 65.7, "pa": 195, "xwoba": 0.295, "reached": false, "zone": false, "label": ""}, {"name": "Matt Shaw", "team": "CHC", "x": 69.67, "y": 34.27, "wrc": 106.2, "pa": 202, "xwoba": 0.303, "reached": true, "zone": false, "label": ""}, {"name": "Braden Montgomery", "team": "CHW", "x": 69.66, "y": 40.87, "wrc": 89.2, "pa": 365, "xwoba": 0.325, "reached": false, "zone": false, "label": ""}, {"name": "Juan Brito", "team": "- - -", "x": 69.65, "y": 30.86, "wrc": 87.2, "pa": 115, "xwoba": 0.288, "reached": false, "zone": false, "label": ""}, {"name": "Sam Antonacci", "team": "CHW", "x": 69.64, "y": 33.5, "wrc": 121.7, "pa": 557, "xwoba": 0.348, "reached": true, "zone": false, "label": ""}, {"name": "Jordan Lawlar", "team": "ARI", "x": 69.54, "y": 31.4, "wrc": 114.0, "pa": 136, "xwoba": 0.314, "reached": true, "zone": false, "label": ""}, {"name": "Jesus Rodriguez", "team": "SFG", "x": 69.37, "y": 29.55, "wrc": 104.9, "pa": 58, "xwoba": 0.315, "reached": true, "zone": false, "label": ""}, {"name": "Javier Sanoja", "team": "MIA", "x": 69.33, "y": 32.31, "wrc": 114.9, "pa": 490, "xwoba": 0.295, "reached": true, "zone": false, "label": ""}, {"name": "Darell Hernaiz", "team": "ATH", "x": 69.3, "y": 27.52, "wrc": 64.9, "pa": 157, "xwoba": 0.262, "reached": false, "zone": false, "label": ""}, {"name": "Tommy White", "team": "ATH", "x": 69.27, "y": 32.26, "wrc": 57.4, "pa": 195, "xwoba": 0.291, "reached": false, "zone": false, "label": ""}, {"name": "Justin Crawford", "team": "PHI", "x": 69.25, "y": 35.13, "wrc": 80.2, "pa": 465, "xwoba": 0.284, "reached": false, "zone": false, "label": ""}, {"name": "Edwin Arroyo", "team": "CIN", "x": 69.23, "y": 27.43, "wrc": 45.6, "pa": 160, "xwoba": 0.291, "reached": false, "zone": false, "label": ""}, {"name": "Harry Ford", "team": "WSN", "x": 69.18, "y": 34.72, "wrc": 86.9, "pa": 118, "xwoba": 0.296, "reached": false, "zone": false, "label": ""}, {"name": "Luke Keaschall", "team": "MIN", "x": 69.16, "y": 29.05, "wrc": 123.3, "pa": 620, "xwoba": 0.322, "reached": true, "zone": false, "label": ""}, {"name": "Drew Cavanaugh", "team": "SFG", "x": 69.09, "y": 28.57, "wrc": 76.7, "pa": 166, "xwoba": 0.298, "reached": false, "zone": false, "label": ""}, {"name": "Edgar Quero", "team": "CHW", "x": 68.95, "y": 39.07, "wrc": 56.4, "pa": 217, "xwoba": 0.282, "reached": false, "zone": false, "label": ""}, {"name": "Adael Amador", "team": "COL", "x": 68.81, "y": 25.0, "wrc": 119.0, "pa": 95, "xwoba": 0.274, "reached": true, "zone": false, "label": ""}, {"name": "Jonah Cox", "team": "SFG", "x": 68.71, "y": 35.11, "wrc": 90.6, "pa": 169, "xwoba": 0.256, "reached": false, "zone": false, "label": ""}, {"name": "Carlos Jorge", "team": "CIN", "x": 68.56, "y": 15.15, "wrc": 66.4, "pa": 50, "xwoba": 0.282, "reached": false, "zone": false, "label": ""}, {"name": "Nolan Schanuel", "team": "LAA", "x": 68.14, "y": 32.94, "wrc": 110.8, "pa": 446, "xwoba": 0.334, "reached": true, "zone": false, "label": ""}, {"name": "Joshua Kuroda-Grauer", "team": "ATH", "x": 68.07, "y": 36.07, "wrc": 146.2, "pa": 74, "xwoba": 0.311, "reached": true, "zone": false, "label": ""}, {"name": "Brett Bateman", "team": "TOR", "x": 67.88, "y": 19.84, "wrc": 138.3, "pa": 181, "xwoba": 0.312, "reached": true, "zone": false, "label": ""}, {"name": "Chase Meidroth", "team": "CHW", "x": 66.95, "y": 34.48, "wrc": 117.7, "pa": 643, "xwoba": 0.301, "reached": true, "zone": false, "label": ""}, {"name": "Jacob Wilson", "team": "ATH", "x": 64.69, "y": 27.56, "wrc": 82.5, "pa": 337, "xwoba": 0.282, "reached": false, "zone": false, "label": ""}];
+const X_MIN = 64, X_MAX = 82, Y_MIN = 10, Y_MAX = 60;
+const BAT_LINE = 73, HH_LINE = 46;
+
+function css(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+const pick = (reached, labeled) => DATA.filter(p => p.reached === reached && (!!p.label) === labeled);
+const sets = {
+  belowU: pick(false, false), reachedU: pick(true, false),
+  belowL: pick(false, true), reachedL: pick(true, true)
+};
+
+function pt(p) { return { x: p.x, y: p.y, p: p }; }
+
+Chart.defaults.font.family = "'Space Mono', monospace";
+Chart.defaults.font.size = 11;
+
+const zonePlugin = {
+  id: 'zonePlugin',
+  beforeDatasetsDraw(chart) {
+    const { ctx, chartArea: { left, right, top, bottom }, scales: { x, y } } = chart;
+    const x0 = x.getPixelForValue(BAT_LINE), y0 = y.getPixelForValue(HH_LINE);
+    ctx.save();
+    ctx.fillStyle = css('--zone');
+    ctx.fillRect(x0, top, right - x0, y0 - top);
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.25;
+    ctx.strokeStyle = css('--ref');
+    ctx.beginPath(); ctx.moveTo(x0, top); ctx.lineTo(x0, bottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left, y0); ctx.lineTo(right, y0); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = css('--ink-3');
+    ctx.font = "600 11px 'Space Grotesk', sans-serif";
+    ctx.textAlign = 'right';
+    ctx.fillText('73 mph', x0 - 6, top + 14);
+    ctx.textAlign = 'left';
+    ctx.fillText('46% HardHit%', left + 8, y0 - 6);
+    ctx.restore();
+  }
+};
+
+// ---- label placement: greedy, candidate ring offsets, leader lines ----
+const labelPlugin = {
+  id: 'labelPlugin',
+  afterDatasetsDraw(chart) {
+    const { ctx, chartArea: ca } = chart;
+    const items = [];
+    const allPts = [];
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      meta.data.forEach((el, i) => {
+        const p = ds.data[i].p;
+        allPts.push({ x: el.x, y: el.y });
+        if (p.label) items.push({ x: el.x, y: el.y, text: p.label, reached: p.reached });
+      });
+    });
+    ctx.save();
+    ctx.font = "600 11px 'Space Grotesk', sans-serif";
+    ctx.textBaseline = 'middle';
+    const H = 13;
+    items.forEach(it => { it.w = ctx.measureText(it.text).width; });
+    // crowded points first
+    items.forEach(it => {
+      it.crowd = allPts.filter(q => Math.hypot(q.x - it.x, q.y - it.y) < 46).length;
+    });
+    items.sort((a, b) => b.crowd - a.crowd);
+    const placed = [];
+    const rectOf = (it, dx, dy, align) => {
+      let x = it.x + dx, y = it.y + dy;
+      let left = align === 'left' ? x : align === 'right' ? x - it.w : x - it.w / 2;
+      return { l: left, r: left + it.w, t: y - H / 2, b: y + H / 2, x, y, align };
+    };
+    const ov = (a, b) => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t));
+    const radii = [9, 12, 15, 18, 22, 27];
+    const nAng = 16;
+    items.forEach(it => {
+      let best = null;
+      radii.forEach(r => {
+        for (let k = 0; k < nAng; k++) {
+          const ang = (k / nAng) * Math.PI * 2;
+          const dx = Math.cos(ang) * r, dy = Math.sin(ang) * r;
+          const align = Math.cos(ang) > 0.35 ? 'left' : Math.cos(ang) < -0.35 ? 'right' : 'center';
+          const rc = rectOf(it, dx + (align === 'left' ? 0 : align === 'right' ? 0 : 0), dy, align);
+          let score = r * 0.9;
+          if (rc.l < ca.left + 2 || rc.r > ca.right - 2 || rc.t < ca.top + 2 || rc.b > ca.bottom - 2) score += 5000;
+          placed.forEach(q => { score += ov(rc, q) * 40; });
+          allPts.forEach(q => {
+            if (q.x > rc.l - 5 && q.x < rc.r + 5 && q.y > rc.t - 5 && q.y < rc.b + 5 && !(q.x === it.x && q.y === it.y)) score += 160;
+          });
+          // keep own dot clear
+          if (it.x > rc.l - 8 && it.x < rc.r + 8 && it.y > rc.t - 8 && it.y < rc.b + 8) score += 400;
+          // mild preference for right/left over above/below
+          if (align === 'center') score += 6;
+          if (!best || score < best.score) best = { score, rc, r };
+        }
+      });
+      it.rc = best.rc; it.r = best.r;
+      if (it.text === 'Spence') { it.rc = rectOf(it, -9, 0, 'right'); }
+      placed.push(best.rc);
+    });
+    items.forEach(it => {
+      const rc = it.rc;
+      if (false) {
+        // leader line from dot edge to nearest label edge
+        const cx = Math.max(rc.l, Math.min(it.x, rc.r)), cy = Math.max(rc.t, Math.min(it.y, rc.b));
+        const ang = Math.atan2(cy - it.y, cx - it.x);
+        ctx.strokeStyle = css('--ink-2');
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(it.x + Math.cos(ang) * 8, it.y + Math.sin(ang) * 8);
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+      }
+      ctx.textAlign = rc.align === 'left' ? 'left' : rc.align === 'right' ? 'right' : 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = css('--surface');
+      ctx.strokeText(it.text, rc.x, rc.y);
+      ctx.fillStyle = css('--ink');
+      ctx.fillText(it.text, rc.x, rc.y);
+    });
+    ctx.restore();
+  }
+};
+
+// ---- external HTML tooltip (fully opaque) ----
+const tip = document.getElementById('tip');
+function externalTooltip(context) {
+  const { chart, tooltip } = context;
+  if (tooltip.opacity === 0 || !tooltip.dataPoints || !tooltip.dataPoints.length) {
+    tip.style.opacity = 0; return;
+  }
+  const p = tooltip.dataPoints[0].raw.p;
+  const tag = p.reached ? 'wRC+ 100+' : 'wRC+ below 100';
+  tip.innerHTML =
+    '<div class="nm">' + p.name + ' <span class="tm">' + p.team + '</span></div>' +
+    '<div class="row"><span>wRC+</span><span>' + Math.round(p.wrc) + '</span></div>' +
+    '<div class="row"><span>PA</span><span>' + p.pa + '</span></div>' +
+    '<div class="row"><span>Bat speed</span><span>' + p.x.toFixed(1) + ' mph</span></div>' +
+    '<div class="row"><span>HardHit%</span><span>' + p.y.toFixed(1) + '%</span></div>' +
+    '<div class="row"><span>xwOBA</span><span>' + p.xwoba.toFixed(3).replace(/^0/, '') + '</span></div>';
+  const box = chart.canvas.parentNode.getBoundingClientRect();
+  const cv = chart.canvas.getBoundingClientRect();
+  tip.style.opacity = 1;
+  let left = tooltip.caretX + (cv.left - box.left) + 14;
+  let top = tooltip.caretY + (cv.top - box.top) - 20;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  if (left + tw > box.width - 4) left = tooltip.caretX + (cv.left - box.left) - tw - 14;
+  if (left < 4) left = 4;
+  if (top + th > box.height - 4) top = box.height - th - 4;
+  if (top < 4) top = 4;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+
+function styleDatasets(chart) {
+  const reached = css('--reached'), below = css('--below'), surface = css('--surface');
+  const [belowU, reachedU, belowL, reachedL] = chart.data.datasets;
+  belowU.borderColor = below; belowU.backgroundColor = 'transparent';
+  reachedU.borderColor = surface; reachedU.backgroundColor = reached;
+  belowL.borderColor = below; belowL.backgroundColor = 'transparent';
+  reachedL.borderColor = below; reachedL.backgroundColor = reached;
+  chart.options.scales.x.grid.color = css('--grid');
+  chart.options.scales.y.grid.color = css('--grid');
+  chart.options.scales.x.ticks.color = css('--ink-2');
+  chart.options.scales.y.ticks.color = css('--ink-2');
+  chart.options.scales.x.title.color = css('--ink-2');
+  chart.options.scales.y.title.color = css('--ink-2');
+  chart.options.scales.x.border.color = css('--ref');
+  chart.options.scales.y.border.color = css('--ref');
+}
+
+const chart = new Chart(document.getElementById('c'), {
+  type: 'scatter',
+  data: {
+    datasets: [
+      { label: 'Below 100', data: sets.belowU.map(pt), pointRadius: 4, borderWidth: 1.5, pointHoverRadius: 6 },
+      { label: 'Reached 100+', data: sets.reachedU.map(pt), pointRadius: 4, borderWidth: 1, pointHoverRadius: 6 },
+      { label: 'Below 100 (labeled)', data: sets.belowL.map(pt), order: -1, pointRadius: 3.5, borderWidth: 2, pointHoverRadius: 6 },
+      { label: 'Reached 100+ (labeled)', data: sets.reachedL.map(pt), order: -1, pointRadius: 3.5, borderWidth: 2, pointHoverRadius: 6 }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: { mode: 'nearest', intersect: true },
+    layout: { padding: { top: 6, right: 8, bottom: 2, left: 2 } },
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: false, external: externalTooltip }
+    },
+    scales: {
+      x: {
+        type: 'linear', min: X_MIN, max: X_MAX,
+        afterBuildTicks: function (axis) {
+          const t = [];
+          for (let v = 64; v <= 82; v += 2) t.push({ value: v });
+          axis.ticks = t;
+        },
+        ticks: { callback: v => v },
+        title: { display: true, text: 'Average bat speed (mph)', font: { family: "'Space Grotesk', sans-serif", size: 12, weight: '600' } },
+        grid: {}, border: {}
+      },
+      y: {
+        type: 'linear', min: Y_MIN, max: Y_MAX,
+        afterBuildTicks: function (axis) {
+          const t = [];
+          for (let v = 10; v <= 60; v += 10) t.push({ value: v });
+          axis.ticks = t;
+        },
+        ticks: { callback: v => v + '%' },
+        title: { display: true, text: 'HardHit%', font: { family: "'Space Grotesk', sans-serif", size: 12, weight: '600' } },
+        grid: {}, border: {}
+      }
+    }
+  },
+  plugins: [zonePlugin, labelPlugin]
+});
+styleDatasets(chart);
+chart.update();
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  styleDatasets(chart);
+  chart.update();
+});
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => chart.update());
+}
+</script>
+</body>
+</html>
