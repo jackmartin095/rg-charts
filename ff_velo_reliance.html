@@ -290,7 +290,7 @@
 <div class="wrap">
   <h1>Velocity-reliant starters, 2026</h1>
   <div class="explainer">
-    These 15 top-150 starters paid the most in ERA when their four-seam velocity dropped. Blue dot is his ERA on normal starts (within 1.5 mph of his peak). Orange dot is the same on low-velo starts (1.5+ mph below peak). The number on the right is the difference in ERA. Hover any dot for the full detail.
+    These 15 top-175 starters paid the most in ERA when their four-seam velocity dropped. Blue dot is his ERA on normal starts (within 1.5 mph of his peak). Orange dot is the same on low-velo starts (1.5+ mph below peak). The number on the right is the difference in ERA. Hover any dot for the full detail.
   </div>
 
   <div id="chart"></div>
@@ -309,23 +309,23 @@
 <div id="tooltip" role="tooltip" aria-hidden="true"></div>
 
 <script>
-// [name, team, avg_velo, peak_velo, era_normal, era_low, low_velo_pct, rank]
+// [name, team, avg_velo, peak_velo, era_normal, era_low, low_velo_pct, NFBC_rank]
 const data = [
-  ["Jump, Gage",         "ATH", 96.3, 97.6, 2.78, 7.12, 42.1, 167],
-  ["Mahle, Tyler",       "ATL", 92.8, 94.2, 2.48, 6.10, 37.0, 82],
-  ["Ryan, Joe",          "MIN", 93.4, 94.8, 3.59, 6.61, 34.6, 24],
-  ["Detmers, Reid",      "LAA", 94.1, 95.2, 2.69, 5.64, 19.4, 19],
-  ["Flaherty, Jack",     "DET", 92.7, 94.3, 3.24, 5.84, 52.6, 70],
-  ["Gausman, Kevin",     "CHC", 93.8, 95.1, 3.79, 6.12, 34.4, 51],
-  ["Harrison, Kyle",     "MIL", 94.7, 96.2, 2.84, 5.17, 50.0, 50],
-  ["Miller, Bryce",      "SEA", 96.0, 97.5, 2.50, 4.82, 57.1, 57],
-  ["Skenes, Paul",       "PIT", 96.8, 97.9, 3.26, 5.45, 19.4, 7],
-  ["Cantillo, Joey",     "CLE", 92.1, 93.2, 3.59, 5.57, 30.4, 98],
-  ["Burns, Chase",       "CIN", 97.6, 98.7, 2.54, 4.50, 24.1, 15],
-  ["Gore, MacKenzie",    "TEX", 95.2, 96.2, 3.85, 5.61, 25.0, 58],
-  ["Liberatore, Matthew","STL", 94.2, 95.5, 4.04, 5.80, 36.0, 99],
-  ["Burke, Sean",        "CWS", 94.8, 96.2, 2.50, 4.20, 45.2, 92],
-  ["Rogers, Trevor",     "BAL", 93.8, 95.2, 3.61, 5.21, 27.6, 33],
+  ["Jump, Gage",         "ATH", 96.3, 97.6, 2.78, 7.12, 42.1, 168],
+  ["Mahle, Tyler",       "ATL", 92.8, 94.2, 2.48, 6.10, 37.0, 121],
+  ["Ryan, Joe",          "MIN", 93.4, 94.8, 3.59, 6.61, 34.6,  46],
+  ["Detmers, Reid",      "LAA", 94.1, 95.2, 2.69, 5.64, 19.4,  42],
+  ["Flaherty, Jack",     "DET", 92.7, 94.3, 3.24, 5.84, 52.6, 161],
+  ["Gausman, Kevin",     "CHC", 93.8, 95.1, 3.79, 6.12, 34.4,  84],
+  ["Harrison, Kyle",     "MIL", 94.7, 96.2, 2.84, 5.17, 50.0,  79],
+  ["Miller, Bryce",      "SEA", 96.0, 97.5, 2.50, 4.82, 57.1, 104],
+  ["Skenes, Paul",       "PIT", 96.8, 97.9, 3.26, 5.45, 19.4,   9],
+  ["Cantillo, Joey",     "CLE", 92.1, 93.2, 3.59, 5.57, 30.4, 108],
+  ["Burns, Chase",       "CIN", 97.6, 98.7, 2.54, 4.50, 24.1,  18],
+  ["Gore, MacKenzie",    "TEX", 95.2, 96.2, 3.85, 5.61, 25.0, 105],
+  ["Liberatore, Matthew","STL", 94.2, 95.5, 4.04, 5.80, 36.0, 183],
+  ["Burke, Sean",        "CWS", 94.8, 96.2, 2.50, 4.20, 45.2,  62],
+  ["Rogers, Trevor",     "BAL", 93.8, 95.2, 3.61, 5.21, 27.6,  73],
 ];
 
 const X_MIN = 1.5, X_MAX = 9.0;
