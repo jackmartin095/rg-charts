@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Velocity-reliant starters, 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #ffffff;
+    --page: #f9f9f7;
+    --text-primary: #111111;
+    --text-secondary: #5a5a57;
+    --muted: #8d8b85;
+    --grid: #ececea;
+    --rule: #d8d6cf;
+    --high-velo: #2a78d6;
+    --low-velo: #eb6834;
+    --line: #cac7be;
+    --ref: #b8b5ac;
+    --tooltip-bg: #111111;
+    --tooltip-text: #ffffff;
+    --tooltip-muted: #adaba3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface: #171716;
+      --page: #0e0e0d;
+      --text-primary: #f0efec;
+      --text-secondary: #bdbcb5;
+      --muted: #8d8b85;
+      --grid: #252523;
+      --rule: #37362f;
+      --high-velo: #3987e5;
+      --low-velo: #d95926;
+      --line: #4b4945;
+      --ref: #4b4945;
+      --tooltip-bg: #f0efec;
+      --tooltip-text: #111111;
+      --tooltip-muted: #5c5a55;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    padding: 28px 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    background: var(--surface);
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 36px 24px;
+  }
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    margin-bottom: 10px;
+  }
+  .explainer {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    max-width: 640px;
+    margin-bottom: 28px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 150px 1fr 68px;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--grid);
+  }
+  .row:first-of-type { border-top: 1px solid var(--grid); }
+  .name-cell { display: flex; flex-direction: column; justify-content: center; }
+  .name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+  .velo-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.01em;
+  }
+  .plot {
+    position: relative;
+    height: 26px;
+  }
+  .ref-line {
+    position: absolute;
+    top: -9px;
+    bottom: -9px;
+    width: 1px;
+    background: var(--ref);
+    z-index: 0;
+  }
+  .gridline {
+    position: absolute;
+    top: -9px;
+    bottom: -9px;
+    width: 1px;
+    background: var(--grid);
+    z-index: 0;
+    opacity: 0.6;
+  }
+  .lollipop-line {
+    position: absolute;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+    background: var(--line);
+    z-index: 1;
+  }
+  .dot {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px solid var(--surface);
+    z-index: 2;
+    pointer-events: none;
+  }
+  .hit {
+    position: absolute;
+    top: 50%;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    cursor: pointer;
+  }
+  .dot.hi { background: var(--high-velo); }
+  .dot.lo { background: var(--low-velo); }
+  .gap-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--low-velo);
+    text-align: right;
+  }
+  .axis {
+    display: grid;
+    grid-template-columns: 150px 1fr 68px;
+    gap: 14px;
+    margin-top: 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-secondary);
+  }
+  .top-axis {
+    margin-top: 0;
+    margin-bottom: 12px;
+    padding-bottom: 4px;
+  }
+  .top-axis .ref-label {
+    top: auto;
+    bottom: -20px;
+  }
+  .axis-ticks { position: relative; height: 18px; }
+  .tick { position: absolute; transform: translateX(-50%); }
+  .axis-label-right {
+    text-align: right;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 10.5px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .ref-label {
+    position: absolute;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    top: -24px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .legend {
+    display: flex;
+    gap: 24px;
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule);
+    font-size: 12px;
+    color: var(--text-secondary);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .swatch {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+    font-family: 'Space Mono', monospace;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: var(--tooltip-bg);
+    color: var(--tooltip-text);
+    padding: 10px 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11.5px;
+    line-height: 1.5;
+    opacity: 0;
+    transform: translate(-50%, -100%);
+    transition: opacity 0.12s;
+    z-index: 100;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    min-width: 190px;
+  }
+  #tooltip.visible { opacity: 1; }
+  .tip-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--tooltip-muted);
+  }
+  .tip-name {
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .tip-team {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--tooltip-muted);
+    letter-spacing: 0.05em;
+  }
+  .tip-rank {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--tooltip-muted);
+    letter-spacing: 0.02em;
+  }
+  .tip-stats {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 16px;
+    font-size: 11px;
+  }
+  .tip-stats .k {
+    text-align: left;
+    color: var(--tooltip-muted);
+  }
+  .tip-stats .v {
+    text-align: right;
+    color: var(--tooltip-text);
+    font-family: 'Space Mono', monospace;
+    font-weight: 500;
+  }
+  @media (max-width: 640px) {
+    body { padding: 16px 10px; }
+    .wrap { padding: 20px 18px; }
+    .row, .axis { grid-template-columns: 112px 1fr 58px; gap: 10px; }
+    .name { font-size: 12.5px; }
+    .velo-sub { font-size: 9.5px; }
+    h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Velocity-reliant starters, 2026</h1>
+  <div class="explainer">
+    These 15 top-150 starters paid the most in ERA when their four-seam velocity dropped. Blue dot is his ERA on normal starts (within 1.5 mph of his peak). Orange dot is the same on low-velo starts (1.5+ mph below peak). The number on the right is the difference in ERA. Hover any dot for the full detail.
+  </div>
+
+  <div id="chart"></div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background: var(--high-velo);"></span>Normal starts (within 1.5 mph of peak)</span>
+    <span><span class="swatch" style="background: var(--low-velo);"></span>Low-velo starts (1.5+ mph below peak)</span>
+    <span style="margin-left: auto; opacity: 0.85;">Vertical line = league-average starter ERA (4.00)</span>
+  </div>
+  <footer>
+    <span>Data: Statcast via pybaseball, 2026 regular season</span>
+    <span>@_jackmrtn</span>
+  </footer>
+</div>
+
+<div id="tooltip" role="tooltip" aria-hidden="true"></div>
+
+<script>
+// [name, team, avg_velo, peak_velo, era_normal, era_low, low_velo_pct, rank]
+const data = [
+  ["Jump, Gage",         "ATH", 96.3, 97.6, 2.78, 7.12, 42.1, 167],
+  ["Mahle, Tyler",       "ATL", 92.8, 94.2, 2.48, 6.10, 37.0, 82],
+  ["Ryan, Joe",          "MIN", 93.4, 94.8, 3.59, 6.61, 34.6, 24],
+  ["Detmers, Reid",      "LAA", 94.1, 95.2, 2.69, 5.64, 19.4, 19],
+  ["Flaherty, Jack",     "DET", 92.7, 94.3, 3.24, 5.84, 52.6, 70],
+  ["Gausman, Kevin",     "CHC", 93.8, 95.1, 3.79, 6.12, 34.4, 51],
+  ["Harrison, Kyle",     "MIL", 94.7, 96.2, 2.84, 5.17, 50.0, 50],
+  ["Miller, Bryce",      "SEA", 96.0, 97.5, 2.50, 4.82, 57.1, 57],
+  ["Skenes, Paul",       "PIT", 96.8, 97.9, 3.26, 5.45, 19.4, 7],
+  ["Cantillo, Joey",     "CLE", 92.1, 93.2, 3.59, 5.57, 30.4, 98],
+  ["Burns, Chase",       "CIN", 97.6, 98.7, 2.54, 4.50, 24.1, 15],
+  ["Gore, MacKenzie",    "TEX", 95.2, 96.2, 3.85, 5.61, 25.0, 58],
+  ["Liberatore, Matthew","STL", 94.2, 95.5, 4.04, 5.80, 36.0, 99],
+  ["Burke, Sean",        "CWS", 94.8, 96.2, 2.50, 4.20, 45.2, 92],
+  ["Rogers, Trevor",     "BAL", 93.8, 95.2, 3.61, 5.21, 27.6, 33],
+];
+
+const X_MIN = 1.5, X_MAX = 9.0;
+const REF_X = 4.00;
+const pct = v => ((v - X_MIN) / (X_MAX - X_MIN)) * 100;
+
+const chart = document.getElementById('chart');
+const tooltip = document.getElementById('tooltip');
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function fmtSigned(v, d) {
+  if (v > 0) return '+' + v.toFixed(d);
+  return v.toFixed(d);
+}
+
+function showTooltip(e, record) {
+  const [name, team, avg, peak, erahi, eralo, lvp, rank] = record;
+  const gap = (eralo - erahi).toFixed(2);
+
+  tooltip.innerHTML = '';
+  const head = el('div', 'tip-head');
+  head.appendChild(el('span', 'tip-name', name));
+  head.appendChild(el('span', 'tip-team', team));
+  head.appendChild(el('span', 'tip-rank', 'P' + rank));
+
+  const stats = el('div', 'tip-stats');
+  const addStat = (k, v) => {
+    stats.appendChild(el('div', 'k', k));
+    stats.appendChild(el('div', 'v', v));
+  };
+  addStat('ERA gap', '+' + gap);
+  addStat('Normal starts', erahi.toFixed(2) + ' ERA');
+  addStat('Low-velo starts', eralo.toFixed(2) + ' ERA');
+  addStat('Four-seam', avg.toFixed(1) + ' avg · ' + peak.toFixed(1) + ' peak');
+  addStat('Low-velo rate', lvp.toFixed(1) + '% of starts');
+
+  tooltip.appendChild(head);
+  tooltip.appendChild(stats);
+
+  tooltip.classList.add('visible');
+  positionTooltip(e);
+}
+
+function positionTooltip(e) {
+  const pad = 14;
+  const tw = tooltip.offsetWidth;
+  const th = tooltip.offsetHeight;
+  let x = e.clientX;
+  let y = e.clientY - pad;
+  if (x - tw / 2 < 10) x = tw / 2 + 10;
+  if (x + tw / 2 > window.innerWidth - 10) x = window.innerWidth - tw / 2 - 10;
+  if (y - th < 10) y = e.clientY + th + pad;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+
+function hideTooltip() {
+  tooltip.classList.remove('visible');
+}
+
+// Axis on top
+const topAxis = el('div', 'axis top-axis');
+topAxis.appendChild(el('div'));
+const topTicks = el('div', 'axis-ticks');
+[2, 3, 4, 5, 6, 7, 8].forEach(v => {
+  const t = el('div', 'tick', v);
+  t.style.left = pct(v) + '%';
+  topTicks.appendChild(t);
+});
+const topRefLabel = el('div', 'ref-label', 'LG AVG');
+topRefLabel.style.left = pct(REF_X) + '%';
+topTicks.appendChild(topRefLabel);
+topAxis.appendChild(topTicks);
+topAxis.appendChild(el('div', 'axis-label-right', 'ERA'));
+chart.appendChild(topAxis);
+
+data.forEach(record => {
+  const [name, team, avg, peak, hi, lo, lvp] = record;
+  const row = el('div', 'row');
+
+  const nameCell = el('div', 'name-cell');
+  nameCell.appendChild(el('div', 'name', name));
+  nameCell.appendChild(el('div', 'velo-sub', avg.toFixed(1) + ' avg · ' + peak.toFixed(1) + ' peak'));
+  nameCell.appendChild(el('div', 'velo-sub', lvp.toFixed(1) + '% low-velo'));
+
+  const plot = el('div', 'plot');
+
+  // Faint gridlines at integer ERAs (behind the reference and dumbbell)
+  [2, 3, 5, 6, 7, 8].forEach(v => {
+    const gl = el('div', 'gridline');
+    gl.style.left = 'calc(' + pct(v) + '% - 0.5px)';
+    plot.appendChild(gl);
+  });
+
+  const ref = el('div', 'ref-line');
+  ref.style.left = 'calc(' + pct(REF_X) + '% - 0.5px)';
+  plot.appendChild(ref);
+
+  const line = el('div', 'lollipop-line');
+  const leftPct = pct(hi), rightPct = pct(lo);
+  line.style.left = leftPct + '%';
+  line.style.width = (rightPct - leftPct) + '%';
+  plot.appendChild(line);
+
+  const dotHi = el('div', 'dot hi');
+  dotHi.style.left = leftPct + '%';
+  plot.appendChild(dotHi);
+
+  const dotLo = el('div', 'dot lo');
+  dotLo.style.left = rightPct + '%';
+  plot.appendChild(dotLo);
+
+  const hitHi = el('div', 'hit');
+  hitHi.style.left = leftPct + '%';
+  hitHi.addEventListener('pointerenter', e => showTooltip(e, record));
+  hitHi.addEventListener('pointermove', positionTooltip);
+  hitHi.addEventListener('pointerleave', hideTooltip);
+  hitHi.tabIndex = 0;
+  hitHi.addEventListener('focus', e => showTooltip({ clientX: hitHi.getBoundingClientRect().left + 15, clientY: hitHi.getBoundingClientRect().top }, record));
+  hitHi.addEventListener('blur', hideTooltip);
+  plot.appendChild(hitHi);
+
+  const hitLo = el('div', 'hit');
+  hitLo.style.left = rightPct + '%';
+  hitLo.addEventListener('pointerenter', e => showTooltip(e, record));
+  hitLo.addEventListener('pointermove', positionTooltip);
+  hitLo.addEventListener('pointerleave', hideTooltip);
+  hitLo.tabIndex = 0;
+  hitLo.addEventListener('focus', e => showTooltip({ clientX: hitLo.getBoundingClientRect().left + 15, clientY: hitLo.getBoundingClientRect().top }, record));
+  hitLo.addEventListener('blur', hideTooltip);
+  plot.appendChild(hitLo);
+
+  const gap = (lo - hi).toFixed(2);
+  const gapCell = el('div', 'gap-val', '+' + gap);
+
+  row.appendChild(nameCell);
+  row.appendChild(plot);
+  row.appendChild(gapCell);
+  chart.appendChild(row);
+});
+
+</script>
+</body>
+</html>
